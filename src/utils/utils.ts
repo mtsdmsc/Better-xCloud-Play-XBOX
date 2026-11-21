@@ -16,6 +16,11 @@ export function checkForUpdate() {
         return;
     }
 
+    // play.xbox.com's CSP blocks api.github.com fetches; Tampermonkey/Violentmonkey handle updates via @updateURL
+    if (window.location.hostname === 'play.xbox.com') {
+        return;
+    }
+
     // Always check for new version
     fetch('https://api.github.com/repos/mtsdmsc/Better-xCloud-Play-XBOX/releases/latest')
         .then(response => response.json())

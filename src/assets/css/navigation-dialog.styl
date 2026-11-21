@@ -73,6 +73,8 @@
     padding: 16px;
 
     max-height: 95vh;
+    max-height: 95dvh;
+    box-sizing: border-box;
     flex-direction: column;
     overflow: hidden;
     display: flex;
@@ -99,8 +101,9 @@
     .bx-dialog-content {
         flex: 1;
         padding: 6px;
-        overflow: auto;
+        overflow-y: auto;
         overflow-x: hidden;
+        -webkit-overflow-scrolling: touch;
     }
 
     .bx-dialog-preset-tools {

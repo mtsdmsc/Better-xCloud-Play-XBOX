@@ -401,10 +401,7 @@ export class StreamSettingsStorage extends BaseSettingsStorage<StreamPref> {
             labelIcon: BxIcon.LOCAL_CO_OP,
             default: false,
             note: () => CE('div', false,
-                CE('a', {
-                    href: 'https://github.com/redphx/better-xcloud/discussions/275',
-                    target: '_blank',
-                }, t('enable-local-co-op-support-note')),
+                t('enable-local-co-op-support-note'),
                 CE('br'),
                 '⚠️ ' + t('unexpected-behavior'),
             ),

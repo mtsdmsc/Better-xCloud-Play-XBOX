@@ -442,6 +442,14 @@ const Texts = {
     "webgpu": "WebGPU",
     "xbox-360-games": "Xbox 360 games",
     "xbox-apps": "Xbox apps",
+    "global-shortcut-hint": "Quick shortcut to open/close menu",
+    "report-bug": "Report bug (Issues)",
+    "tooltip-general": "General Better xCloud Desktop settings. Press Alt + Shift + X at any time to open or close this menu.",
+    "tooltip-audio": "Adjust stream volume booster (requires enabling volume control in the General tab).",
+    "tooltip-video": "Configure renderer (WebGL2/WebGPU), Clarity Boost, aspect ratio, sharpness, saturation, contrast, and brightness in real time.",
+    "tooltip-controller": "Manage local co-op, controller polling rate, shortcuts, button customization, and deadzones.",
+    "tooltip-mkb": "Configure emulated Mouse & Keyboard mappings, in-game keyboard shortcuts, and native MKB scroll sensitivity.",
+    "tooltip-stats": "Display real-time stream stats bar (FPS, Ping, Bitrate, Decode time, Packet loss) while playing.",
 };
 
 const PtBrTexts: Partial<Record<keyof typeof Texts, string>> = {
@@ -771,6 +779,14 @@ const PtBrTexts: Partial<Record<keyof typeof Texts, string>> = {
     "webgpu": "WebGPU",
     "xbox-360-games": "Jogos de Xbox 360",
     "xbox-apps": "Aplicativos do Xbox",
+    "global-shortcut-hint": "Atalho rápido para abrir/fechar o menu",
+    "report-bug": "Reportar bug (Issues)",
+    "tooltip-general": "Configurações gerais do Better xCloud Desktop. Pressione Alt + Shift + X a qualquer momento para abrir ou fechar este menu.",
+    "tooltip-audio": "Ajuste o amplificador de volume da transmissão (requer o controle de volume ativado na aba Geral).",
+    "tooltip-video": "Configure o renderizador (WebGL2/WebGPU), Clarity Boost, proporção de tela, nitidez, saturação, contraste e brilho em tempo real.",
+    "tooltip-controller": "Gerencie co-op local, taxa de atualização (polling rate), atalhos e personalização de botões/zonas mortas do controle.",
+    "tooltip-mkb": "Configure mapeamentos de Mouse e Teclado emulado, atalhos de teclado no jogo e sensibilidade de rolagem do MKB nativo.",
+    "tooltip-stats": "Exibe barra de estatísticas em tempo real (FPS, Ping, Bitrate, Decodificação, Perda de Pacotes) durante a transmissão.",
 };
 
 export class Translations {

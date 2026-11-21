@@ -154,7 +154,7 @@ export class GlobalSettingsStorage extends BaseSettingsStorage<GlobalPref> {
         [GlobalPref.STREAM_PREVENT_RESOLUTION_DROPS]: {
             label: t('prevent-resolution-drops'),
             default: false,
-            note: CE('a', { href: 'https://github.com/redphx/better-xcloud/issues/791', target: '_blank' }, '⚠️ ' + t('unexpected-behavior')),
+            note: '⚠️ ' + t('unexpected-behavior'),
         },
 
         [GlobalPref.STREAM_CODEC_PROFILE]: {
@@ -358,20 +358,8 @@ export class GlobalSettingsStorage extends BaseSettingsStorage<GlobalPref> {
             default: false,
             unsupported: !STATES.userAgent.capabilities.mkb || !STATES.browser.capabilities.mkb,
             ready: (setting: SettingDefinition) => {
-                let note;
-                let url;
-                if (setting.unsupported) {
-                    note = t('browser-unsupported-feature');
-                    url = 'https://github.com/redphx/better-xcloud/issues/206#issuecomment-1920475657';
-                } else {
-                    note = t('mkb-disclaimer');
-                    url = 'https://better-xcloud.github.io/mouse-and-keyboard/#disclaimer';
-                }
-
-                setting.unsupportedNote = () => CE('a', {
-                    href: url,
-                    target: '_blank',
-                }, '⚠️ ' + note);
+                const note = setting.unsupported ? t('browser-unsupported-feature') : t('mkb-disclaimer');
+                setting.unsupportedNote = '⚠️ ' + note;
             },
         },
 
@@ -513,9 +501,10 @@ export class GlobalSettingsStorage extends BaseSettingsStorage<GlobalPref> {
                 [UserAgentProfile.DEFAULT]: t('default'),
                 [UserAgentProfile.WINDOWS_EDGE]: 'Edge + Windows',
                 [UserAgentProfile.MACOS_SAFARI]: 'Safari + macOS',
-                [UserAgentProfile.VR_OCULUS]: 'Android TV',
-                [UserAgentProfile.SMART_TV_GENERIC]: 'Smart TV',
-                [UserAgentProfile.SMART_TV_TIZEN]: 'Samsung Smart TV',
+                // Mobile/TV profiles hidden for Desktop-only mode (kept in enum for future reactivation)
+                // [UserAgentProfile.VR_OCULUS]: 'Android TV',
+                // [UserAgentProfile.SMART_TV_GENERIC]: 'Smart TV',
+                // [UserAgentProfile.SMART_TV_TIZEN]: 'Samsung Smart TV',
                 [UserAgentProfile.CUSTOM]: t('custom'),
             },
         },

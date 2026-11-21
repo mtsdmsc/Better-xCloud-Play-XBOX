@@ -32,6 +32,7 @@ import { HeaderSection } from "./modules/ui/header";
 import { GameTile } from "./modules/ui/game-tile";
 import { ProductDetailsPage } from "./modules/ui/product-details";
 import { NavigationDialogManager } from "./modules/ui/dialog/navigation-dialog";
+import { SettingsDialog } from "./modules/ui/dialog/settings-dialog";
 import { GlobalPref, StreamPref } from "./enums/pref-keys";
 import { UserAgent } from "./utils/user-agent";
 import { XboxApi } from "./utils/xbox-api";
@@ -124,7 +125,7 @@ if (!IS_NEW_SITE && isFullVersion() && BX_FLAGS.SafariWorkaround && document.rea
         $secondaryAction = CE('p', false, t('settings-reloading'));
     } else {
         $secondaryAction = CE('a', {
-            href: 'https://better-xcloud.github.io/troubleshooting',
+            href: 'https://github.com/mtsdmsc/Better-xCloud-Play-XBOX/issues',
             target: '_blank',
         }, '🤓 ' + t('how-to-fix'));
     }
@@ -527,6 +528,28 @@ function main() {
 
         EmulatedMkbHandler.setupEvents();
     }
+
+    // Global desktop keyboard shortcut: Alt + Shift + X to toggle Better xCloud Settings
+    window.addEventListener('keydown', (e: KeyboardEvent) => {
+        if (!e.altKey || !e.shiftKey || e.ctrlKey || e.metaKey || e.code !== 'KeyX') {
+            return;
+        }
+        const active = document.activeElement as HTMLElement | null;
+        if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.isContentEditable)) {
+            return;
+        }
+
+        e.preventDefault();
+        e.stopPropagation();
+
+        const dialogManager = NavigationDialogManager.getInstance();
+        const settingsDialog = SettingsDialog.getInstance();
+        if (dialogManager.isShowing()) {
+            dialogManager.hide();
+        } else {
+            settingsDialog.show();
+        }
+    }, true);
 
     // Show a toast when connecting/disconecting controller
     if (getGlobalPref(GlobalPref.UI_CONTROLLER_SHOW_STATUS)) {

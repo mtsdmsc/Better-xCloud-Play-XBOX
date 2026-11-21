@@ -28,6 +28,10 @@ import { MkbExtraSettings } from "./settings/mkb-extra";
 import { BxEventBus } from "@/utils/bx-event-bus";
 import { getGlobalPref, getPrefInfo, getStreamPref, isStreamPref, setGlobalPref, STORAGE } from "@/utils/pref-utils";
 import { SettingsManager } from "@/modules/settings-manager";
+import { Toast } from "@/utils/toast";
+
+// Desktop-only mode: apenas oculta seções/opções de Mobile e TV na UI (código preservado para futura reativação)
+const DESKTOP_ONLY_MODE = true;
 
 
 type SettingTabSectionItem = Partial<{
@@ -54,7 +58,7 @@ type SettingTabSection = {
     label?: string;
     unsupported?: boolean;
     unsupportedNote?: HTMLElement | string | Text | null;
-    helpUrl?: string;
+    helpTooltip?: string;
     content?: HTMLElement;
     items?: Array<SettingTabSectionItem | AnyPref | (($parent: HTMLElement) => void) | false>;
     requiredVariants?: BuildVariant | Array<BuildVariant>;
@@ -100,7 +104,7 @@ export class SettingsDialog extends NavigationDialog {
     private readonly TAB_GLOBAL_ITEMS: Array<SettingTabSection | false> = [{
         group: 'general',
         label: t('better-xcloud'),
-        helpUrl: 'https://better-xcloud.github.io/features/',
+        helpTooltip: t('tooltip-general'),
         items: [
             // Top buttons
             ($parent) => {
@@ -141,6 +145,18 @@ export class SettingsDialog extends NavigationDialog {
                     class: 'bx-settings-reload-note',
                 }, t('settings-reload-note'));
                 topButtons.push(this.$noteGlobalReload);
+
+                // Visual hint for the global keyboard shortcut
+                topButtons.push(CE('div', {
+                    class: 'bx-global-shortcut-badge',
+                },
+                    CE('span', false, `⌨️ ${t('global-shortcut-hint')}: `),
+                    CE('kbd', false, 'Alt'),
+                    ' + ',
+                    CE('kbd', false, 'Shift'),
+                    ' + ',
+                    CE('kbd', false, 'X'),
+                ));
 
                 // Suggestion
                 this.$btnSuggestion = CE('div', {
@@ -198,7 +214,7 @@ export class SettingsDialog extends NavigationDialog {
             GlobalPref.SCREENSHOT_APPLY_FILTERS,
 
             GlobalPref.AUDIO_MIC_ON_PLAYING,
-            GlobalPref.GAME_FORTNITE_FORCE_CONSOLE,
+            !DESKTOP_ONLY_MODE && GlobalPref.GAME_FORTNITE_FORCE_CONSOLE,
             GlobalPref.STREAM_COMBINE_SOURCES,
         ],
     }, {
@@ -210,7 +226,7 @@ export class SettingsDialog extends NavigationDialog {
             {
                 pref: GlobalPref.NATIVE_MKB_FORCED_GAMES,
                 multiLines: true,
-                note: CE('a', { href: 'https://github.com/redphx/better-xcloud/discussions/574', target: '_blank' }, t('unofficial-game-list')),
+                note: t('unofficial-game-list'),
             },
 
             GlobalPref.MKB_ENABLED,
@@ -220,19 +236,16 @@ export class SettingsDialog extends NavigationDialog {
         // Unsupported
         ...(!STATES.browser.capabilities.emulatedNativeMkb && (!STATES.userAgent.capabilities.mkb || !STATES.browser.capabilities.mkb) ? {
             unsupported: true,
-            unsupportedNote: CE('a', {
-                href: 'https://github.com/redphx/better-xcloud/issues/206#issuecomment-1920475657',
-                target: '_blank',
-            }, '⚠️ ' + t('browser-unsupported-feature')),
+            unsupportedNote: '⚠️ ' + t('browser-unsupported-feature'),
         } : {}),
-    }, {
+    }, !DESKTOP_ONLY_MODE && {
         requiredVariants: 'full',
         group: 'touch-control',
         label: t('touch-controller'),
         items: [
             {
                 pref: GlobalPref.TOUCH_CONTROLLER_MODE,
-                note: CE('a', { href: 'https://github.com/redphx/better-xcloud/discussions/241', target: '_blank' }, t('unofficial-game-list')),
+                note: t('unofficial-game-list'),
             },
             GlobalPref.TOUCH_CONTROLLER_AUTO_OFF,
             GlobalPref.TOUCH_CONTROLLER_DEFAULT_OPACITY,
@@ -338,14 +351,40 @@ export class SettingsDialog extends NavigationDialog {
                 } catch (e) {}
             },
 
-            // Donation link
+            // Port info & Issues link
             $parent => {
-                $parent.appendChild(CE('a', {
-                    class: 'bx-donation-link',
-                    href: 'https://ko-fi.com/redphx',
-                    target: '_blank',
-                    tabindex: 0,
-                }, `❤️ ${t('support-better-xcloud')}`));
+                $parent.appendChild(CE('div', {
+                    class: 'bx-port-footer',
+                },
+                    CE('div', false,
+                        `Desktop Port v${SCRIPT_VERSION} by `,
+                        CE('a', {
+                            href: 'https://github.com/mtsdmsc/Better-xCloud-Play-XBOX',
+                            target: '_blank',
+                            tabindex: 0,
+                        }, '@mtsdmsc'),
+                        ' • Original by ',
+                        CE('a', {
+                            href: 'https://github.com/redphx/better-xcloud',
+                            target: '_blank',
+                            tabindex: 0,
+                        }, '@redphx'),
+                    ),
+                    CE('div', { class: 'bx-port-footer-links' },
+                        CE('a', {
+                            href: 'https://github.com/mtsdmsc/Better-xCloud-Play-XBOX/issues',
+                            target: '_blank',
+                            tabindex: 0,
+                        }, `🐞 ${t('report-bug')}`),
+                        ' • ',
+                        CE('a', {
+                            class: 'bx-donation-link-subtle',
+                            href: 'https://ko-fi.com/redphx',
+                            target: '_blank',
+                            tabindex: 0,
+                        }, `❤️ ${t('support-better-xcloud')}`),
+                    ),
+                ));
             },
 
             // Clear data
@@ -404,7 +443,7 @@ export class SettingsDialog extends NavigationDialog {
         requiredVariants: 'full',
         group: 'audio',
         label: t('audio'),
-        helpUrl: 'https://better-xcloud.github.io/ingame-features/#audio',
+        helpTooltip: t('tooltip-audio'),
         items: [{
             pref: StreamPref.AUDIO_VOLUME,
             params: {
@@ -425,7 +464,7 @@ export class SettingsDialog extends NavigationDialog {
     }, {
         group: 'video',
         label: t('video'),
-        helpUrl: 'https://better-xcloud.github.io/ingame-features/#video',
+        helpTooltip: t('tooltip-video'),
         items: [
             StreamPref.VIDEO_PLAYER_TYPE,
             StreamPref.VIDEO_MAX_FPS,
@@ -444,7 +483,7 @@ export class SettingsDialog extends NavigationDialog {
     private readonly TAB_CONTROLLER_ITEMS: Array<SettingTabSection | HTMLElement | false> = isFullVersion() ? [{
         group: 'controller',
         label: t('controller'),
-        helpUrl: 'https://better-xcloud.github.io/ingame-features/#controller',
+        helpTooltip: t('tooltip-controller'),
         items: [
             StreamPref.LOCAL_CO_OP_ENABLED,
             StreamPref.CONTROLLER_POLLING_RATE,
@@ -454,7 +493,7 @@ export class SettingsDialog extends NavigationDialog {
         ],
     },
 
-    STATES.userAgent.capabilities.touch && {
+    !DESKTOP_ONLY_MODE && STATES.userAgent.capabilities.touch && {
         group: 'touch-control',
         label: t('touch-controller'),
         items: [{
@@ -526,7 +565,7 @@ export class SettingsDialog extends NavigationDialog {
             requiredVariants: 'full',
             group: 'mkb',
             label: t('mouse-and-keyboard'),
-            helpUrl: 'https://better-xcloud.github.io/mouse-and-keyboard/',
+            helpTooltip: t('tooltip-mkb'),
             items: [
                 ($parent: HTMLElement) => {
                     $parent.appendChild(MkbExtraSettings.renderSettings.apply(this));
@@ -547,7 +586,7 @@ export class SettingsDialog extends NavigationDialog {
     private readonly TAB_STATS_ITEMS: Array<SettingTabSection | false> = [{
         group: 'stats',
         label: t('stream-stats'),
-        helpUrl: 'https://better-xcloud.github.io/stream-stats/',
+        helpTooltip: t('tooltip-stats'),
         items: [
             StreamPref.STATS_SHOW_WHEN_PLAYING,
             StreamPref.STATS_QUICK_GLANCE_ENABLED,
@@ -1002,11 +1041,14 @@ export class SettingsDialog extends NavigationDialog {
                     }
                 },
                     CE('span', false, label),
-                    section.helpUrl && createButton({
+                    section.helpTooltip && createButton({
+                            classes: ['bx-help-tooltip-btn'],
                             icon: BxIcon.QUESTION,
                             style: ButtonStyle.GHOST | ButtonStyle.FOCUSABLE,
-                            url: section.helpUrl,
-                            title: t('help'),
+                            title: section.helpTooltip,
+                            onClick: () => {
+                                Toast.show(section.label || t('help'), section.helpTooltip!, { instant: true });
+                            },
                         }),
                 );
 
