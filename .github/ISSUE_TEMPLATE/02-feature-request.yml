@@ -1,0 +1,31 @@
+name: Sugestão de Recurso 🚀 / Feature Request
+description: Sugira uma melhoria ou novo recurso para o porte Desktop do Better xCloud
+title: "[Feature] "
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Preencha as informações abaixo para descrever sua sugestão para navegadores **Desktop** (em **Português** ou **Inglês**).
+  - type: dropdown
+    id: os_type
+    attributes:
+      label: Sistema Operacional
+      description: "Para qual plataforma Desktop é esta sugestão?"
+      options:
+        - Todos os sistemas Desktop
+        - Windows
+        - macOS
+        - Linux / SteamOS
+      multiple: false
+    validations:
+      required: true
+
+  - type: textarea
+    id: suggestion
+    attributes:
+      label: "Sugestão"
+      description: "Descreva o que você gostaria de sugerir ou melhorar. Inclua capturas de tela se possível."
+    validations:
+      required: true

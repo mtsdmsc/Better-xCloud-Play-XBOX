@@ -1,0 +1,109 @@
+name: Relatório de Bug 🐞 / Bug Report
+description: Relate um problema encontrado no porte Desktop para play.xbox.com
+title: "[Bug] "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        > [!NOTE]
+        > - Este repositório é destinado exclusivamente ao **porte Desktop (Windows, macOS, Linux, SteamOS)** do Better xCloud para `play.xbox.com`, mantido por [**@mtsdmsc**](https://github.com/mtsdmsc).
+        > - Dispositivos móveis (Android/iOS) e Smart TVs **não são suportados** neste porte.
+        > - Você pode preencher este relatório em **Português** ou **Inglês**.
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Checklist
+      options:
+        - label: Confirmo que estou utilizando um navegador **Desktop** (Windows, macOS, Linux ou SteamOS).
+          required: true
+        - label: Pesquisei nas [**issues abertas e fechadas**](https://github.com/mtsdmsc/Better-xCloud-Play-XBOX/issues?q=is%3Aissue) para verificar se o problema já foi reportado.
+          required: true
+        - label: Descreverei o problema com o máximo de detalhes possível.
+          required: true
+
+  - type: dropdown
+    id: site_domain
+    attributes:
+      label: Em qual domínio o problema ocorreu?
+      options:
+        - "play.xbox.com (Novo site)"
+        - "xbox.com/play (Site legado)"
+        - "Ambos"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: question_02
+    attributes:
+      label: "O bug deixa de acontecer quando você desativa o script Better xCloud?"
+      options:
+        - "Sim"
+        - "Não"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: "Sistema Operacional (Desktop)"
+      options:
+        - Windows
+        - macOS
+        - Linux
+        - SteamOS (Steam Deck)
+      multiple: false
+    validations:
+      required: true
+
+  - type: input
+    id: browser_version
+    attributes:
+      label: "Navegador e Gerenciador de Userscript"
+      description: "Informe o navegador Desktop, versão e extensão (Tampermonkey/Violentmonkey)"
+      placeholder: "ex.: Edge 131 / Tampermonkey"
+    validations:
+      required: true
+
+  - type: input
+    id: extension_version
+    attributes:
+      label: "Versão do Better xCloud"
+      description: "Qual versão do script você está usando?"
+      placeholder: "ex.: 1.0.0"
+    validations:
+      required: true
+
+  - type: input
+    id: game_list
+    attributes:
+      label: "Jogo(s)"
+      description: "Em qual(is) jogo(s) o problema ocorreu? (opcional)"
+      placeholder: "ex.: Forza Horizon 5, Halo Infinite"
+    validations:
+      required: false
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: "Passos para Reproduzir"
+      description: |
+        Como reproduzir este bug?
+      placeholder: |
+        Exemplo:
+        1. Abrir play.xbox.com
+        2. Clicar no botão Y
+        3. Ocorre o erro Z
+    validations:
+      required: true
+
+  - type: textarea
+    id: media
+    attributes:
+      label: "Capturas de tela / Logs do Console (F12)"
+      description: |
+        Adicione prints ou mensagens de erro do Console do navegador (DevTools), se possível.
+    validations:
+      required: false
