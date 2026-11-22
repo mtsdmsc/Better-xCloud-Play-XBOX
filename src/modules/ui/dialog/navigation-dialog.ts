@@ -149,6 +149,8 @@ export class NavigationDialogManager {
     private gamepadPollingIntervalId: number | null = null;
     private gamepadLastStates: Array<[number, GamepadKey, boolean] | null> = [];
     private gamepadHoldingIntervalId: number | null = null;
+    private nativeGetGamepads: Navigator['getGamepads'] = window.navigator.getGamepads.bind(window.navigator);
+    private savedGetGamepads: Navigator['getGamepads'] | null = null;
 
     private $overlay: HTMLElement;
     private $container: HTMLElement;
@@ -247,7 +249,7 @@ export class NavigationDialogManager {
     }
 
     private pollGamepad = () => {
-        const gamepads = window.navigator.getGamepads();
+        const gamepads = this.nativeGetGamepads();
 
         for (const gamepad of gamepads) {
             if (!gamepad || !gamepad.connected) {
@@ -652,6 +654,23 @@ export class NavigationDialogManager {
     private startGamepadPolling() {
         this.stopGamepadPolling();
 
+        // On play.xbox.com, hide physical gamepads from the page while Better xCloud dialog is open
+        // so D-pad/stick navigation only controls the dialog and never moves games behind it.
+        if (window.location.hostname === 'play.xbox.com' && !this.savedGetGamepads) {
+            this.savedGetGamepads = window.navigator.getGamepads;
+            try {
+                window.navigator.getGamepads = () => [null, null, null, null] as any;
+            } catch (e) {
+                try {
+                    Object.defineProperty(window.navigator, 'getGamepads', {
+                        value: () => [null, null, null, null],
+                        configurable: true,
+                        writable: true,
+                    });
+                } catch (e2) {}
+            }
+        }
+
         if (isFullVersion()) {
             this.gamepadPollingIntervalId = window.setInterval(this.pollGamepad, NavigationDialogManager.GAMEPAD_POLLING_INTERVAL);
         }
@@ -662,6 +681,21 @@ export class NavigationDialogManager {
 
         this.gamepadPollingIntervalId && window.clearInterval(this.gamepadPollingIntervalId);
         this.gamepadPollingIntervalId = null;
+
+        if (this.savedGetGamepads) {
+            try {
+                window.navigator.getGamepads = this.savedGetGamepads;
+            } catch (e) {
+                try {
+                    Object.defineProperty(window.navigator, 'getGamepads', {
+                        value: this.savedGetGamepads,
+                        configurable: true,
+                        writable: true,
+                    });
+                } catch (e2) {}
+            }
+            this.savedGetGamepads = null;
+        }
     }
 
     private focusDirection(direction: NavigationDirection) {

@@ -1,5 +1,5 @@
 #bx-game-bar {
-    z-index: var(--bx-game-bar-z-index);
+    z-index: 4500;
     position: fixed;
     bottom: 0;
     width: 40px;
@@ -8,17 +8,23 @@
     cursor: pointer;
 
     > svg {
-        display: none;
+        display: block;
+        opacity: 0.45;
         pointer-events: none;
         position: absolute;
         height: 28px;
-        margin-top: 16px;
+        width: 28px;
+        margin-top: 26px;
+        padding: 4px;
+        border-radius: 6px;
+        background: rgba(20, 21, 24, 0.72);
+        transition: opacity 0.15s ease;
     }
 
     @media (hover: hover) {
         &:hover {
             > svg {
-                display: block;
+                opacity: 1;
             }
         }
     }

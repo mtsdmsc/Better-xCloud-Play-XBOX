@@ -38,6 +38,10 @@ export class GameTile {
                 $div.dataset.duration = duration;
             }
 
+            if (window.location.hostname === 'play.xbox.com' && getComputedStyle($elm).position === 'static') {
+                $elm.style.position = 'relative';
+            }
+
             $elm.insertAdjacentElement('afterbegin', $div);
         }
     }
@@ -80,7 +84,39 @@ export class GameTile {
         return productId;
     }
 
+    private static findProductIdFromHref($elm: HTMLElement): string | null {
+        const href = $elm.getAttribute('href') || '';
+        const match = href.match(/\/(?:games|launch)\/[^/?#]+\/([A-Za-z0-9]{12})(?:[/?#]|$)/i)
+            || href.match(/\/(?:games|launch)\/([A-Za-z0-9]{12})(?:[/?#]|$)/i);
+        return match ? match[1].toUpperCase() : null;
+    }
+
     static setup() {
+        // Novo site: play.xbox.com (detecta hover/foco nos cartões de jogos)
+        if (window.location.hostname === 'play.xbox.com') {
+            const onCardInteract = (e: Event) => {
+                const target = e.target as HTMLElement | null;
+                if (!target || !target.closest) {
+                    return;
+                }
+                const $card = target.closest<HTMLElement>('a[href*="/games/"], a[href*="/launch/"]');
+                if (!$card || ($card as any).hasWaitTime) {
+                    return;
+                }
+                // Ignora links fora da grade/carrossel de jogos (ex.: links de texto simples sem imagem)
+                if (!$card.querySelector('img')) {
+                    return;
+                }
+                const productId = GameTile.findProductIdFromHref($card);
+                if (productId) {
+                    GameTile.requestWaitTime($card, productId);
+                }
+            };
+
+            document.addEventListener('pointerenter', onCardInteract, true);
+            document.addEventListener('focusin', onCardInteract, true);
+        }
+
         window.addEventListener(BxEvent.NAVIGATION_FOCUS_CHANGED, e => {
             const $elm = (e as any).element;
             const className = $elm.className || '';

@@ -14,6 +14,9 @@ import { BxLogger } from "@/utils/bx-logger";
 import { GameBarPosition, TouchControllerMode } from "@/enums/pref-values";
 import { BxEventBus } from "@/utils/bx-event-bus";
 import { getGlobalPref } from "@/utils/pref-utils";
+import { StreamStats } from "@/modules/stream/stream-stats";
+import { SettingsDialog } from "@/modules/ui/dialog/settings-dialog";
+import { t } from "@/utils/translation";
 
 
 export class GameBar {
@@ -71,6 +74,32 @@ export class GameBar {
         for (const action of this.actions) {
             $container.appendChild(action.render());
         }
+
+        // Quick Stats & Settings buttons directly on Game Bar (especially useful on play.xbox.com)
+        const $btnStats = CE('button', {
+            class: 'bx-button bx-game-bar-quick-btn',
+            title: `${t('stream-stats')} (Alt + Shift + S)`,
+            _on: {
+                click: () => {
+                    StreamStats.getInstance().toggle();
+                    BxEventBus.Stream.emit('gameBar.activated', {});
+                },
+            },
+        }, createSvgIcon(BxIcon.STREAM_STATS));
+
+        const $btnSettings = CE('button', {
+            class: 'bx-button bx-game-bar-quick-btn',
+            title: `${t('better-xcloud')} (Alt + Shift + X)`,
+            _on: {
+                click: () => {
+                    SettingsDialog.getInstance().show();
+                    BxEventBus.Stream.emit('gameBar.activated', {});
+                },
+            },
+        }, createSvgIcon(BxIcon.STREAM_SETTINGS));
+
+        $container.appendChild($btnStats);
+        $container.appendChild($btnSettings);
 
         // Toggle game bar when clicking on the game bar box
         $gameBar.addEventListener('click', e => {

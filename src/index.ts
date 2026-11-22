@@ -529,9 +529,11 @@ function main() {
         EmulatedMkbHandler.setupEvents();
     }
 
-    // Global desktop keyboard shortcut: Alt + Shift + X to toggle Better xCloud Settings
+    // Global desktop keyboard shortcuts:
+    // - Alt + Shift + X: toggle Better xCloud Settings
+    // - Alt + Shift + S: toggle Stream Stats bar
     window.addEventListener('keydown', (e: KeyboardEvent) => {
-        if (!e.altKey || !e.shiftKey || e.ctrlKey || e.metaKey || e.code !== 'KeyX') {
+        if (!e.altKey || !e.shiftKey || e.ctrlKey || e.metaKey) {
             return;
         }
         const active = document.activeElement as HTMLElement | null;
@@ -539,17 +541,45 @@ function main() {
             return;
         }
 
-        e.preventDefault();
-        e.stopPropagation();
+        if (e.code === 'KeyX') {
+            e.preventDefault();
+            e.stopPropagation();
 
-        const dialogManager = NavigationDialogManager.getInstance();
-        const settingsDialog = SettingsDialog.getInstance();
-        if (dialogManager.isShowing()) {
-            dialogManager.hide();
-        } else {
-            settingsDialog.show();
+            const dialogManager = NavigationDialogManager.getInstance();
+            const settingsDialog = SettingsDialog.getInstance();
+            if (dialogManager.isShowing()) {
+                dialogManager.hide();
+            } else {
+                settingsDialog.show();
+            }
+        } else if (e.code === 'KeyS') {
+            e.preventDefault();
+            e.stopPropagation();
+            StreamStats.getInstance().toggle();
         }
     }, true);
+
+    // On play.xbox.com, releasing Pointer Lock via Esc/F9 can trigger Xbox's side Guide panel right after exit.
+    // Swallow Escape briefly right after pointer lock exits so user can freely click HUD/Stats/Game Bar.
+    if (IS_NEW_SITE) {
+        let lastPointerLockExitAt = 0;
+        let hadPointerLock = false;
+        document.addEventListener('pointerlockchange', () => {
+            if (document.pointerLockElement) {
+                hadPointerLock = true;
+            } else if (hadPointerLock) {
+                hadPointerLock = false;
+                lastPointerLockExitAt = performance.now();
+            }
+        });
+
+        window.addEventListener('keydown', (e: KeyboardEvent) => {
+            if (e.code === 'Escape' && STATES.isPlaying && (document.pointerLockElement || performance.now() - lastPointerLockExitAt < 400)) {
+                e.stopImmediatePropagation();
+                e.stopPropagation();
+            }
+        }, true);
+    }
 
     // Show a toast when connecting/disconecting controller
     if (getGlobalPref(GlobalPref.UI_CONTROLLER_SHOW_STATUS)) {
