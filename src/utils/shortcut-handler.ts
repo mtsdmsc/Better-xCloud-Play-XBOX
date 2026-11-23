@@ -36,7 +36,16 @@ export class ShortcutHandler {
                 break;
 
             case ShortcutAction.STREAM_MENU_SHOW:
-                StreamUiShortcut.showHideStreamMenu();
+                if (window.BX_EXPOSED.showStreamMenu) {
+                    StreamUiShortcut.showHideStreamMenu();
+                } else {
+                    const settingsDialog = SettingsDialog.getInstance();
+                    if (settingsDialog.dialogManager.isShowing()) {
+                        settingsDialog.hide();
+                    } else {
+                        settingsDialog.show();
+                    }
+                }
                 break;
 
             case ShortcutAction.STREAM_SOUND_TOGGLE:

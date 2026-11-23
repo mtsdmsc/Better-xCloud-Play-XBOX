@@ -1,9 +1,15 @@
 import { GamepadKey } from "@/enums/gamepad";
-import { ControllerShortcut } from "@/modules/controller-shortcut";
-import { VIRTUAL_GAMEPAD_ID } from "@/modules/mkb/mkb-handler";
 import { BxEvent } from "./bx-event";
 import { STATES } from "./global";
-import { StreamSettings } from "./stream-settings";
+
+const VIRTUAL_GAMEPAD_ID_LOCAL = 'Better xCloud Virtual Controller';
+
+export type PlayXboxGamepadCallbacks = {
+    isGuideOpen: () => boolean;
+    refreshControllerSettings: () => void;
+    handleShortcut: (gp: Gamepad) => boolean;
+    resetShortcut: (index: number) => void;
+};
 
 const XCLOUD_KEY_TO_GAMEPAD_INDEX: Partial<Record<keyof XcloudGamepad, GamepadKey>> = {
     A: GamepadKey.A,
@@ -42,7 +48,7 @@ export class PlayXboxGamepad {
     private static homeStates: Map<number, HomeShortcutState> = new Map();
     private static syntheticHomeUntil: Map<number, number> = new Map();
     private static sharePrevPressed: Map<number, boolean> = new Map();
-    private static guideOpenChecker: (() => boolean) | null = null;
+    private static callbacks: PlayXboxGamepadCallbacks | null = null;
 
     static getRawGamepads(): (Gamepad | null)[] {
         try {
@@ -53,7 +59,9 @@ export class PlayXboxGamepad {
     }
 
     static setGuideOpenChecker(fn: () => boolean) {
-        PlayXboxGamepad.guideOpenChecker = fn;
+        if (PlayXboxGamepad.callbacks) {
+            PlayXboxGamepad.callbacks.isGuideOpen = fn;
+        }
     }
 
     static setDialogNeutralMode(enabled: boolean) {
@@ -63,7 +71,8 @@ export class PlayXboxGamepad {
         }
     }
 
-    static install() {
+    static install(callbacks: PlayXboxGamepadCallbacks) {
+        PlayXboxGamepad.callbacks = callbacks;
         if (PlayXboxGamepad.installed || window.location.hostname !== 'play.xbox.com') {
             return;
         }
@@ -155,7 +164,7 @@ export class PlayXboxGamepad {
                 continue;
             }
 
-            if (gp.id === VIRTUAL_GAMEPAD_ID) {
+            if (gp.id === VIRTUAL_GAMEPAD_ID_LOCAL) {
                 result.push(gp);
                 continue;
             }
@@ -178,7 +187,7 @@ export class PlayXboxGamepad {
             // Ensure controller settings are loaded for this gamepad ID
             if (!PlayXboxGamepad.knownGamepadIds.has(gp.id)) {
                 PlayXboxGamepad.knownGamepadIds.add(gp.id);
-                StreamSettings.refreshControllerSettings();
+                PlayXboxGamepad.callbacks?.refreshControllerSettings();
             }
 
             const controllerSettings = window.BX_STREAM_SETTINGS?.controllers?.[gp.id];
@@ -213,7 +222,7 @@ export class PlayXboxGamepad {
             let modified = false;
 
             // 1. Controller Shortcuts (Hold Xbox button + combo button)
-            const isGuideOpen = PlayXboxGamepad.guideOpenChecker ? PlayXboxGamepad.guideOpenChecker() : false;
+            const isGuideOpen = PlayXboxGamepad.callbacks ? PlayXboxGamepad.callbacks.isGuideOpen() : false;
             const homeBtn = gp.buttons[GamepadKey.HOME];
 
             if (hasShortcuts && homeBtn && !isGuideOpen) {
@@ -221,7 +230,7 @@ export class PlayXboxGamepad {
 
                 if (homeBtn.pressed) {
                     if (!state) {
-                        ControllerShortcut.reset(gp.index);
+                        PlayXboxGamepad.callbacks?.resetShortcut(gp.index);
                         state = {
                             pressedAt: now,
                             shortcutTriggered: false,
@@ -234,7 +243,7 @@ export class PlayXboxGamepad {
                     cloned.buttons[GamepadKey.HOME] = { pressed: false, touched: false, value: 0 };
                     modified = true;
 
-                    const handled = ControllerShortcut.handle(gp);
+                    const handled = PlayXboxGamepad.callbacks ? PlayXboxGamepad.callbacks.handleShortcut(gp) : false;
                     if (handled) {
                         state.shortcutTriggered = true;
                     }
@@ -248,7 +257,7 @@ export class PlayXboxGamepad {
                     }
                 } else if (state) {
                     PlayXboxGamepad.homeStates.delete(gp.index);
-                    ControllerShortcut.reset(gp.index);
+                    PlayXboxGamepad.callbacks?.resetShortcut(gp.index);
 
                     if (!state.shortcutTriggered) {
                         // Normal quick tap of Xbox button -> pulse HOME to open Xbox Guide

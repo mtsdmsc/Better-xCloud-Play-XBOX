@@ -47,6 +47,7 @@ import { SettingsManager } from "./modules/settings-manager";
 import { Toast } from "./utils/toast";
 import { PlaytimeTracker } from "./utils/playtime-tracker";
 import { PlayXboxGamepad } from "./utils/play-xbox-gamepad";
+import { ControllerShortcut } from "./modules/controller-shortcut";
 import { WebGPUPlayer } from "./modules/player/webgpu/webgpu-player";
 import { StreamUiHandler } from "./modules/stream/stream-ui";
 import { TrueAchievements } from "./utils/true-achievements";
@@ -481,7 +482,12 @@ function main() {
 
     StreamSettings.setup();
     if (IS_NEW_SITE) {
-        PlayXboxGamepad.install();
+        PlayXboxGamepad.install({
+            isGuideOpen: () => GuideMenu.getInstance().isGuideMenuOpen(),
+            refreshControllerSettings: () => StreamSettings.refreshControllerSettings(),
+            handleShortcut: (gp) => ControllerShortcut.handle(gp),
+            resetShortcut: (idx) => ControllerShortcut.reset(idx),
+        });
     }
 
     // Monkey patches (wrapped so iOS WebKit quirks never abort UI initialization)

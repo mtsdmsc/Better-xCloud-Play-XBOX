@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Better xCloud (Desktop - play.xbox.com)
 // @namespace    https://github.com/mtsdmsc/Better-xCloud-Play-XBOX
-// @version      1.3.6
+// @version      1.3.7
 // @description  Improve Xbox Cloud Gaming (xCloud) on Desktop browsers at play.xbox.com and xbox.com/play (Port by Mateus Damasceno / Original by redphx)
 // @author       redphx, Mateus Damasceno (mtsdmsc)
 // @license      MIT
@@ -199,7 +199,7 @@ class UserAgent {
   } catch (e) {}
  }
 }
-var SCRIPT_VERSION = "1.3.6", SCRIPT_VARIANT = "full", AppInterface = window.AppInterface;
+var SCRIPT_VERSION = "1.3.7", SCRIPT_VARIANT = "full", AppInterface = window.AppInterface;
 UserAgent.init();
 var userAgent = window.navigator.userAgent.toLowerCase(), isTv = userAgent.includes("smart-tv") || userAgent.includes("smarttv") || /\baft.*\b/.test(userAgent), isVr = window.navigator.userAgent.includes("VR") && window.navigator.userAgent.includes("OculusBrowser"), browserHasTouchSupport = "ontouchstart" in window || navigator.maxTouchPoints > 0, userAgentHasTouchSupport = !isTv && !isVr && browserHasTouchSupport, STATES = {
  supportedRegion: !0,
@@ -3349,160 +3349,11 @@ class SoundShortcut {
   }
  }
 }
-class KeyHelper {
- static NON_PRINTABLE_KEYS = {
-  Backquote: "`",
-  Minus: "-",
-  Equal: "=",
-  BracketLeft: "[",
-  BracketRight: "]",
-  Backslash: "\\",
-  Semicolon: ";",
-  Quote: "'",
-  Comma: ",",
-  Period: ".",
-  Slash: "/",
-  NumpadMultiply: "Numpad *",
-  NumpadAdd: "Numpad +",
-  NumpadSubtract: "Numpad -",
-  NumpadDecimal: "Numpad .",
-  NumpadDivide: "Numpad /",
-  NumpadEqual: "Numpad =",
-  Mouse0: "Left Click",
-  Mouse2: "Right Click",
-  Mouse1: "Middle Click",
-  ScrollUp: "Scroll Up",
-  ScrollDown: "Scroll Down",
-  ScrollLeft: "Scroll Left",
-  ScrollRight: "Scroll Right"
- };
- static getKeyFromEvent(e) {
-  let code = null, modifiers;
-  if (e instanceof KeyboardEvent) code = e.code || e.key, modifiers = 0, modifiers ^= e.ctrlKey ? 1 : 0, modifiers ^= e.shiftKey ? 2 : 0, modifiers ^= e.altKey ? 4 : 0;
-  else if (e instanceof WheelEvent) {
-   if (e.deltaY < 0) code = "ScrollUp";
-   else if (e.deltaY > 0) code = "ScrollDown";
-   else if (e.deltaX < 0) code = "ScrollLeft";
-   else if (e.deltaX > 0) code = "ScrollRight";
-  } else if (e instanceof MouseEvent) code = "Mouse" + e.button;
-  if (code) {
-   let results = { code };
-   if (modifiers) results.modifiers = modifiers;
-   return results;
-  }
-  return null;
- }
- static getFullKeyCodeFromEvent(e) {
-  let key = KeyHelper.getKeyFromEvent(e);
-  return key ? `${key.code}:${key.modifiers || 0}` : "";
- }
- static parseFullKeyCode(str) {
-  if (!str) return null;
-  let tmp = str.split(":"), code = tmp[0], modifiers = parseInt(tmp[1]);
-  return {
-   code,
-   modifiers
-  };
- }
- static codeToKeyName(key) {
-  let { code, modifiers } = key, text = [KeyHelper.NON_PRINTABLE_KEYS[code] || code.startsWith("Key") && code.substring(3) || code.startsWith("Digit") && code.substring(5) || code.startsWith("Numpad") && "Numpad " + code.substring(6) || code.startsWith("Arrow") && "Arrow " + code.substring(5) || code.endsWith("Lock") && code.replace("Lock", " Lock") || code.endsWith("Left") && "Left " + code.replace("Left", "") || code.endsWith("Right") && "Right " + code.replace("Right", "") || code];
-  if (modifiers && modifiers !== 0) {
-   if (!code.startsWith("Control") && !code.startsWith("Shift") && !code.startsWith("Alt")) {
-    if (modifiers & 2) text.unshift("Shift");
-    if (modifiers & 4) text.unshift("Alt");
-    if (modifiers & 1) text.unshift("Ctrl");
-   }
-  }
-  return text.join(" + ");
+class StreamUiShortcut {
+ static showHideStreamMenu() {
+  window.BX_EXPOSED.showStreamMenu && window.BX_EXPOSED.showStreamMenu();
  }
 }
-class PointerClient {
- static instance;
- static getInstance = () => PointerClient.instance ?? (PointerClient.instance = new PointerClient);
- LOG_TAG = "PointerClient";
- REQUIRED_PROTOCOL_VERSION = 2;
- socket;
- mkbHandler;
- constructor() {
-  BxLogger.info(this.LOG_TAG, "constructor()");
- }
- start(port, mkbHandler) {
-  if (!port) throw Error("PointerServer port is 0");
-  this.mkbHandler = mkbHandler, this.socket = new WebSocket(`ws://localhost:${port}`), this.socket.binaryType = "arraybuffer", this.socket.addEventListener("open", (event) => {
-   BxLogger.info(this.LOG_TAG, "connected");
-  }), this.socket.addEventListener("error", (event) => {
-   BxLogger.error(this.LOG_TAG, event), Toast.show("Cannot setup mouse: " + event);
-  }), this.socket.addEventListener("close", (event) => {
-   this.socket = null;
-  }), this.socket.addEventListener("message", (event) => {
-   let dataView = new DataView(event.data), messageType = dataView.getInt8(0), offset = Int8Array.BYTES_PER_ELEMENT;
-   switch (messageType) {
-    case 127:
-     let protocolVersion = this.onProtocolVersion(dataView, offset);
-     if (BxLogger.info(this.LOG_TAG, "Protocol version", protocolVersion), protocolVersion !== this.REQUIRED_PROTOCOL_VERSION) alert("Required MKB protocol: " + protocolVersion), this.stop();
-     break;
-    case 1:
-     this.onMove(dataView, offset);
-     break;
-    case 2:
-    case 3:
-     this.onPress(messageType, dataView, offset);
-     break;
-    case 4:
-     this.onScroll(dataView, offset);
-     break;
-    case 5:
-     this.onPointerCaptureChanged(dataView, offset);
-   }
-  });
- }
- onProtocolVersion(dataView, offset) {
-  return dataView.getUint16(offset);
- }
- onMove(dataView, offset) {
-  let x = dataView.getInt16(offset);
-  offset += Int16Array.BYTES_PER_ELEMENT;
-  let y = dataView.getInt16(offset);
-  this.mkbHandler?.handleMouseMove({
-   movementX: x,
-   movementY: y
-  });
- }
- onPress(messageType, dataView, offset) {
-  let button = dataView.getUint8(offset);
-  this.mkbHandler?.handleMouseClick({
-   pointerButton: button,
-   pressed: messageType === 2
-  });
- }
- onScroll(dataView, offset) {
-  let vScroll = dataView.getInt16(offset);
-  offset += Int16Array.BYTES_PER_ELEMENT;
-  let hScroll = dataView.getInt16(offset);
-  this.mkbHandler?.handleMouseWheel({
-   vertical: vScroll,
-   horizontal: hScroll
-  });
- }
- onPointerCaptureChanged(dataView, offset) {
-  dataView.getInt8(offset) !== 1 && this.mkbHandler?.stop();
- }
- stop() {
-  try {
-   this.socket?.close();
-  } catch (e) {}
-  this.socket = null;
- }
-}
-class MouseDataProvider {
- mkbHandler;
- constructor(handler) {
-  this.mkbHandler = handler;
- }
- init() {}
- destroy() {}
-}
-class MkbHandler {}
 class StreamStatsCollector {
  static instance;
  static getInstance = () => StreamStatsCollector.instance ?? (StreamStatsCollector.instance = new StreamStatsCollector);
@@ -3822,6 +3673,371 @@ class StreamStats {
   StreamStats.getInstance().refreshStyles();
  }
 }
+class KeyHelper {
+ static NON_PRINTABLE_KEYS = {
+  Backquote: "`",
+  Minus: "-",
+  Equal: "=",
+  BracketLeft: "[",
+  BracketRight: "]",
+  Backslash: "\\",
+  Semicolon: ";",
+  Quote: "'",
+  Comma: ",",
+  Period: ".",
+  Slash: "/",
+  NumpadMultiply: "Numpad *",
+  NumpadAdd: "Numpad +",
+  NumpadSubtract: "Numpad -",
+  NumpadDecimal: "Numpad .",
+  NumpadDivide: "Numpad /",
+  NumpadEqual: "Numpad =",
+  Mouse0: "Left Click",
+  Mouse2: "Right Click",
+  Mouse1: "Middle Click",
+  ScrollUp: "Scroll Up",
+  ScrollDown: "Scroll Down",
+  ScrollLeft: "Scroll Left",
+  ScrollRight: "Scroll Right"
+ };
+ static getKeyFromEvent(e) {
+  let code = null, modifiers;
+  if (e instanceof KeyboardEvent) code = e.code || e.key, modifiers = 0, modifiers ^= e.ctrlKey ? 1 : 0, modifiers ^= e.shiftKey ? 2 : 0, modifiers ^= e.altKey ? 4 : 0;
+  else if (e instanceof WheelEvent) {
+   if (e.deltaY < 0) code = "ScrollUp";
+   else if (e.deltaY > 0) code = "ScrollDown";
+   else if (e.deltaX < 0) code = "ScrollLeft";
+   else if (e.deltaX > 0) code = "ScrollRight";
+  } else if (e instanceof MouseEvent) code = "Mouse" + e.button;
+  if (code) {
+   let results = { code };
+   if (modifiers) results.modifiers = modifiers;
+   return results;
+  }
+  return null;
+ }
+ static getFullKeyCodeFromEvent(e) {
+  let key = KeyHelper.getKeyFromEvent(e);
+  return key ? `${key.code}:${key.modifiers || 0}` : "";
+ }
+ static parseFullKeyCode(str) {
+  if (!str) return null;
+  let tmp = str.split(":"), code = tmp[0], modifiers = parseInt(tmp[1]);
+  return {
+   code,
+   modifiers
+  };
+ }
+ static codeToKeyName(key) {
+  let { code, modifiers } = key, text = [KeyHelper.NON_PRINTABLE_KEYS[code] || code.startsWith("Key") && code.substring(3) || code.startsWith("Digit") && code.substring(5) || code.startsWith("Numpad") && "Numpad " + code.substring(6) || code.startsWith("Arrow") && "Arrow " + code.substring(5) || code.endsWith("Lock") && code.replace("Lock", " Lock") || code.endsWith("Left") && "Left " + code.replace("Left", "") || code.endsWith("Right") && "Right " + code.replace("Right", "") || code];
+  if (modifiers && modifiers !== 0) {
+   if (!code.startsWith("Control") && !code.startsWith("Shift") && !code.startsWith("Alt")) {
+    if (modifiers & 2) text.unshift("Shift");
+    if (modifiers & 4) text.unshift("Alt");
+    if (modifiers & 1) text.unshift("Ctrl");
+   }
+  }
+  return text.join(" + ");
+ }
+}
+class PointerClient {
+ static instance;
+ static getInstance = () => PointerClient.instance ?? (PointerClient.instance = new PointerClient);
+ LOG_TAG = "PointerClient";
+ REQUIRED_PROTOCOL_VERSION = 2;
+ socket;
+ mkbHandler;
+ constructor() {
+  BxLogger.info(this.LOG_TAG, "constructor()");
+ }
+ start(port, mkbHandler) {
+  if (!port) throw Error("PointerServer port is 0");
+  this.mkbHandler = mkbHandler, this.socket = new WebSocket(`ws://localhost:${port}`), this.socket.binaryType = "arraybuffer", this.socket.addEventListener("open", (event) => {
+   BxLogger.info(this.LOG_TAG, "connected");
+  }), this.socket.addEventListener("error", (event) => {
+   BxLogger.error(this.LOG_TAG, event), Toast.show("Cannot setup mouse: " + event);
+  }), this.socket.addEventListener("close", (event) => {
+   this.socket = null;
+  }), this.socket.addEventListener("message", (event) => {
+   let dataView = new DataView(event.data), messageType = dataView.getInt8(0), offset = Int8Array.BYTES_PER_ELEMENT;
+   switch (messageType) {
+    case 127:
+     let protocolVersion = this.onProtocolVersion(dataView, offset);
+     if (BxLogger.info(this.LOG_TAG, "Protocol version", protocolVersion), protocolVersion !== this.REQUIRED_PROTOCOL_VERSION) alert("Required MKB protocol: " + protocolVersion), this.stop();
+     break;
+    case 1:
+     this.onMove(dataView, offset);
+     break;
+    case 2:
+    case 3:
+     this.onPress(messageType, dataView, offset);
+     break;
+    case 4:
+     this.onScroll(dataView, offset);
+     break;
+    case 5:
+     this.onPointerCaptureChanged(dataView, offset);
+   }
+  });
+ }
+ onProtocolVersion(dataView, offset) {
+  return dataView.getUint16(offset);
+ }
+ onMove(dataView, offset) {
+  let x = dataView.getInt16(offset);
+  offset += Int16Array.BYTES_PER_ELEMENT;
+  let y = dataView.getInt16(offset);
+  this.mkbHandler?.handleMouseMove({
+   movementX: x,
+   movementY: y
+  });
+ }
+ onPress(messageType, dataView, offset) {
+  let button = dataView.getUint8(offset);
+  this.mkbHandler?.handleMouseClick({
+   pointerButton: button,
+   pressed: messageType === 2
+  });
+ }
+ onScroll(dataView, offset) {
+  let vScroll = dataView.getInt16(offset);
+  offset += Int16Array.BYTES_PER_ELEMENT;
+  let hScroll = dataView.getInt16(offset);
+  this.mkbHandler?.handleMouseWheel({
+   vertical: vScroll,
+   horizontal: hScroll
+  });
+ }
+ onPointerCaptureChanged(dataView, offset) {
+  dataView.getInt8(offset) !== 1 && this.mkbHandler?.stop();
+ }
+ stop() {
+  try {
+   this.socket?.close();
+  } catch (e) {}
+  this.socket = null;
+ }
+}
+class MouseDataProvider {
+ mkbHandler;
+ constructor(handler) {
+  this.mkbHandler = handler;
+ }
+ init() {}
+ destroy() {}
+}
+class MkbHandler {}
+class MkbPopup {
+ static instance;
+ static getInstance = () => MkbPopup.instance ?? (MkbPopup.instance = new MkbPopup);
+ popupType;
+ $popup;
+ $title;
+ $btnActivate;
+ mkbHandler;
+ constructor() {
+  this.render(), BxEventBus.Stream.on("keyboardShortcuts.updated", () => {
+   let $newButton = this.createActivateButton();
+   this.$btnActivate.replaceWith($newButton), this.$btnActivate = $newButton;
+  });
+ }
+ attachMkbHandler(handler) {
+  this.mkbHandler = handler, this.popupType = handler instanceof NativeMkbHandler ? "native" : "virtual", this.$popup.dataset.type = this.popupType, this.$title.innerText = t(this.popupType === "native" ? "native-mkb" : "virtual-controller");
+ }
+ toggleVisibility(show) {
+  if (show && !this.$popup.isConnected) document.documentElement.appendChild(this.$popup);
+  this.$popup.classList.toggle("bx-gone", !show), show && this.moveOffscreen(!1);
+ }
+ moveOffscreen(doMove) {
+  this.$popup.classList.toggle("bx-offscreen", doMove);
+ }
+ createActivateButton() {
+  let options = {
+   style: 1 | 1024 | 128,
+   label: t("activate"),
+   onClick: this.onActivate
+  }, shortcutKey = StreamSettings.findKeyboardShortcut("mkb.toggle");
+  if (shortcutKey) options.secondaryText = t("press-key-to-toggle-mkb", { key: KeyHelper.codeToKeyName(shortcutKey) });
+  return createButton(options);
+ }
+ onActivate = (e) => {
+  e.preventDefault(), this.mkbHandler.toggle(!0);
+ };
+ render() {
+  if (this.$popup = CE("div", { class: "bx-mkb-pointer-lock-msg bx-gone" }, this.$title = CE("p"), this.$btnActivate = this.createActivateButton(), CE("div", !1, createButton({
+   label: t("ignore"),
+   style: 8,
+   onClick: (e) => {
+    e.preventDefault(), this.mkbHandler.toggle(!1), this.mkbHandler.waitForMouseData(!1);
+   }
+  }), createButton({
+   label: t("manage"),
+   icon: BxIcon.MANAGE,
+   style: 64,
+   onClick: () => {
+    let dialog = SettingsDialog.getInstance();
+    dialog.focusTab("mkb"), dialog.show();
+   }
+  }))), window.location.hostname !== "play.xbox.com")
+   document.documentElement.appendChild(this.$popup);
+ }
+ reset() {
+  this.toggleVisibility(!0), this.moveOffscreen(!1);
+ }
+}
+class NativeMkbHandler extends MkbHandler {
+ static instance;
+ static getInstance() {
+  if (typeof NativeMkbHandler.instance > "u") if (NativeMkbHandler.isAllowed()) NativeMkbHandler.instance = new NativeMkbHandler;
+   else NativeMkbHandler.instance = null;
+  return NativeMkbHandler.instance;
+ }
+ LOG_TAG = "NativeMkbHandler";
+ static isAllowed = () => STATES.browser.capabilities.emulatedNativeMkb && getGlobalPref("nativeMkb.mode") === "on";
+ pointerClient;
+ enabled = !1;
+ mouseButtonsPressed = 0;
+ mouseVerticalMultiply = 0;
+ mouseHorizontalMultiply = 0;
+ inputChannel;
+ popup;
+ constructor() {
+  super();
+  BxLogger.info(this.LOG_TAG, "constructor()"), this.popup = MkbPopup.getInstance(), this.popup.attachMkbHandler(this);
+ }
+ onKeyboardEvent(e) {
+  if (e.type === "keyup" && e.code === "F8") {
+   e.preventDefault(), this.toggle();
+   return;
+  }
+ }
+ onPointerLockRequested(e) {
+  AppInterface.requestPointerCapture(), this.start();
+ }
+ onPointerLockExited(e) {
+  AppInterface.releasePointerCapture(), this.stop();
+ }
+ onPollingModeChanged = (e) => {
+  let move = window.BX_STREAM_SETTINGS.xCloudPollingMode !== "none";
+  this.popup.moveOffscreen(move);
+ };
+ onDialogShown = () => {
+  document.pointerLockElement && document.exitPointerLock();
+ };
+ handleEvent(event) {
+  switch (event.type) {
+   case "keyup":
+    this.onKeyboardEvent(event);
+    break;
+   case BxEvent.POINTER_LOCK_REQUESTED:
+    this.onPointerLockRequested(event);
+    break;
+   case BxEvent.POINTER_LOCK_EXITED:
+    this.onPointerLockExited(event);
+    break;
+   case BxEvent.XCLOUD_POLLING_MODE_CHANGED:
+    this.onPollingModeChanged(event);
+    break;
+  }
+ }
+ init() {
+  this.pointerClient = PointerClient.getInstance(), this.inputChannel = window.BX_EXPOSED.inputChannel, this.updateInputConfigurationAsync(!1);
+  try {
+   this.pointerClient.start(STATES.pointerServerPort, this);
+  } catch (e) {
+   Toast.show("Cannot enable Mouse & Keyboard feature");
+  }
+  this.mouseVerticalMultiply = getStreamPref("nativeMkb.scroll.sensitivityY"), this.mouseHorizontalMultiply = getStreamPref("nativeMkb.scroll.sensitivityX"), window.addEventListener("keyup", this), window.addEventListener(BxEvent.POINTER_LOCK_REQUESTED, this), window.addEventListener(BxEvent.POINTER_LOCK_EXITED, this), window.addEventListener(BxEvent.XCLOUD_POLLING_MODE_CHANGED, this), BxEventBus.Script.on("dialog.shown", this.onDialogShown);
+  let shortcutKey = StreamSettings.findKeyboardShortcut("mkb.toggle");
+  if (shortcutKey) {
+   let msg = t("press-key-to-toggle-mkb", { key: `<b>${KeyHelper.codeToKeyName(shortcutKey)}</b>` });
+   Toast.show(msg, t("native-mkb"), { html: !0 });
+  }
+  this.waitForMouseData(!1);
+ }
+ toggle(force) {
+  let setEnable;
+  if (typeof force < "u") setEnable = force;
+  else setEnable = !this.enabled;
+  if (setEnable) document.documentElement.requestPointerLock();
+  else document.exitPointerLock();
+ }
+ updateInputConfigurationAsync(enabled) {
+  window.BX_EXPOSED.streamSession.updateInputConfigurationAsync({
+   enableKeyboardInput: enabled,
+   enableMouseInput: enabled,
+   enableAbsoluteMouse: !1,
+   enableTouchInput: !1
+  });
+ }
+ start() {
+  this.resetMouseInput(), this.enabled = !0, this.updateInputConfigurationAsync(!0), window.BX_EXPOSED.stopTakRendering = !0, this.waitForMouseData(!1), Toast.show(t("native-mkb"), t("enabled"), { instant: !0 });
+ }
+ stop() {
+  this.resetMouseInput(), this.enabled = !1, this.updateInputConfigurationAsync(!1), this.waitForMouseData(!0);
+ }
+ destroy() {
+  this.pointerClient?.stop(), this.stop(), window.removeEventListener("keyup", this), window.removeEventListener(BxEvent.POINTER_LOCK_REQUESTED, this), window.removeEventListener(BxEvent.POINTER_LOCK_EXITED, this), window.removeEventListener(BxEvent.XCLOUD_POLLING_MODE_CHANGED, this), BxEventBus.Script.off("dialog.shown", this.onDialogShown), this.waitForMouseData(!1), document.exitPointerLock();
+ }
+ handleMouseMove(data) {
+  this.sendMouseInput({
+   X: data.movementX,
+   Y: data.movementY,
+   Buttons: this.mouseButtonsPressed,
+   WheelX: 0,
+   WheelY: 0
+  });
+ }
+ handleMouseClick(data) {
+  let { pointerButton, pressed } = data;
+  if (pressed) this.mouseButtonsPressed |= pointerButton;
+  else this.mouseButtonsPressed ^= pointerButton;
+  this.mouseButtonsPressed = Math.max(0, this.mouseButtonsPressed), this.sendMouseInput({
+   X: 0,
+   Y: 0,
+   Buttons: this.mouseButtonsPressed,
+   WheelX: 0,
+   WheelY: 0
+  });
+ }
+ handleMouseWheel(data) {
+  let { vertical, horizontal } = data, mouseWheelX = horizontal;
+  if (this.mouseHorizontalMultiply && this.mouseHorizontalMultiply !== 1) mouseWheelX *= this.mouseHorizontalMultiply;
+  let mouseWheelY = vertical;
+  if (this.mouseVerticalMultiply && this.mouseVerticalMultiply !== 1) mouseWheelY *= this.mouseVerticalMultiply;
+  return this.sendMouseInput({
+   X: 0,
+   Y: 0,
+   Buttons: this.mouseButtonsPressed,
+   WheelX: mouseWheelX,
+   WheelY: mouseWheelY
+  }), !0;
+ }
+ setVerticalScrollMultiplier(vertical) {
+  this.mouseVerticalMultiply = vertical;
+ }
+ setHorizontalScrollMultiplier(horizontal) {
+  this.mouseHorizontalMultiply = horizontal;
+ }
+ waitForMouseData(showPopup) {
+  this.popup.toggleVisibility(showPopup);
+ }
+ isEnabled() {
+  return this.enabled;
+ }
+ sendMouseInput(data) {
+  data.Type = 0, this.inputChannel?.queueMouseInput(data);
+ }
+ resetMouseInput() {
+  this.mouseButtonsPressed = 0, this.sendMouseInput({
+   X: 0,
+   Y: 0,
+   Buttons: 0,
+   WheelX: 0,
+   WheelY: 0
+  });
+ }
+}
 function showGamepadToast(gamepad) {
  if (gamepad.id === VIRTUAL_GAMEPAD_ID) return;
  if (gamepad._noToast) return;
@@ -3916,7 +4132,325 @@ var XCLOUD_GAMEPAD_KEY_MAPPING = {
 function toXcloudGamepadKey(gamepadKey) {
  return XCLOUD_GAMEPAD_KEY_MAPPING[gamepadKey];
 }
-var XCLOUD_KEY_TO_GAMEPAD_INDEX = {
+var PointerToMouseButton = {
+ 1: 0,
+ 2: 2,
+ 4: 1
+}, VIRTUAL_GAMEPAD_ID = "Better xCloud Virtual Controller";
+class WebSocketMouseDataProvider extends MouseDataProvider {
+ pointerClient;
+ isConnected = !1;
+ init() {
+  this.pointerClient = PointerClient.getInstance(), this.isConnected = !1;
+  try {
+   this.pointerClient.start(STATES.pointerServerPort, this.mkbHandler), this.isConnected = !0;
+  } catch (e) {
+   Toast.show("Cannot enable Mouse & Keyboard feature");
+  }
+ }
+ start() {
+  this.isConnected && AppInterface.requestPointerCapture();
+ }
+ stop() {
+  this.isConnected && AppInterface.releasePointerCapture();
+ }
+ destroy() {
+  this.isConnected && this.pointerClient?.stop();
+ }
+}
+class PointerLockMouseDataProvider extends MouseDataProvider {
+ start() {
+  window.addEventListener("mousemove", this.onMouseMoveEvent), window.addEventListener("mousedown", this.onMouseEvent), window.addEventListener("mouseup", this.onMouseEvent), window.addEventListener("wheel", this.onWheelEvent, { passive: !1 }), window.addEventListener("contextmenu", this.disableContextMenu);
+ }
+ stop() {
+  document.pointerLockElement && document.exitPointerLock(), window.removeEventListener("mousemove", this.onMouseMoveEvent), window.removeEventListener("mousedown", this.onMouseEvent), window.removeEventListener("mouseup", this.onMouseEvent), window.removeEventListener("wheel", this.onWheelEvent), window.removeEventListener("contextmenu", this.disableContextMenu);
+ }
+ onMouseMoveEvent = (e) => {
+  this.mkbHandler.handleMouseMove({
+   movementX: e.movementX,
+   movementY: e.movementY
+  });
+ };
+ onMouseEvent = (e) => {
+  e.preventDefault();
+  let data = {
+   mouseButton: e.button,
+   pressed: e.type === "mousedown"
+  };
+  this.mkbHandler.handleMouseClick(data);
+ };
+ onWheelEvent = (e) => {
+  if (!KeyHelper.getKeyFromEvent(e)) return;
+  let data = {
+   vertical: e.deltaY,
+   horizontal: e.deltaX
+  };
+  if (this.mkbHandler.handleMouseWheel(data)) e.preventDefault();
+ };
+ disableContextMenu = (e) => e.preventDefault();
+}
+class EmulatedMkbHandler extends MkbHandler {
+ static instance;
+ static getInstance() {
+  if (typeof EmulatedMkbHandler.instance > "u") if (EmulatedMkbHandler.isAllowed()) EmulatedMkbHandler.instance = new EmulatedMkbHandler;
+   else EmulatedMkbHandler.instance = null;
+  return EmulatedMkbHandler.instance;
+ }
+ static LOG_TAG = "EmulatedMkbHandler";
+ static isAllowed() {
+  return getGlobalPref("mkb.enabled") && (AppInterface || !UserAgent.isMobile());
+ }
+ PRESET;
+ VIRTUAL_GAMEPAD = {
+  id: VIRTUAL_GAMEPAD_ID,
+  index: 0,
+  connected: !1,
+  hapticActuators: null,
+  mapping: "standard",
+  axes: [0, 0, 0, 0],
+  buttons: Array(17).fill(null).map(() => ({ pressed: !1, value: 0 })),
+  timestamp: performance.now(),
+  vibrationActuator: null
+ };
+ nativeGetGamepads;
+ xCloudGamepad = generateVirtualControllerMapping(0);
+ initialized = !1;
+ enabled = !1;
+ mouseDataProvider;
+ isPolling = !1;
+ prevWheelCode = null;
+ wheelStoppedTimeoutId = null;
+ detectMouseStoppedTimeoutId = null;
+ escKeyDownTime = -1;
+ LEFT_STICK_X = [];
+ LEFT_STICK_Y = [];
+ RIGHT_STICK_X = [];
+ RIGHT_STICK_Y = [];
+ popup;
+ STICK_MAP = {
+  102: [this.LEFT_STICK_X, -1],
+  103: [this.LEFT_STICK_X, 1],
+  100: [this.LEFT_STICK_Y, 1],
+  101: [this.LEFT_STICK_Y, -1],
+  202: [this.RIGHT_STICK_X, -1],
+  203: [this.RIGHT_STICK_X, 1],
+  200: [this.RIGHT_STICK_Y, 1],
+  201: [this.RIGHT_STICK_Y, -1]
+ };
+ constructor() {
+  super();
+  BxLogger.info(EmulatedMkbHandler.LOG_TAG, "constructor()"), this.nativeGetGamepads = window.navigator.getGamepads.bind(window.navigator), this.popup = MkbPopup.getInstance(), this.popup.attachMkbHandler(this);
+ }
+ isEnabled = () => this.enabled;
+ patchedGetGamepads = () => {
+  let nativePads = this.nativeGetGamepads(), gamepads = nativePads ? Array.from(nativePads) : [null, null, null, null];
+  return gamepads[this.VIRTUAL_GAMEPAD.index] = this.VIRTUAL_GAMEPAD, gamepads;
+ };
+ getVirtualGamepad = () => this.VIRTUAL_GAMEPAD;
+ updateStick(stick, x, y) {
+  let gamepad = this.xCloudGamepad;
+  if (stick === 0) gamepad.LeftThumbXAxis = x, gamepad.LeftThumbYAxis = -y, this.VIRTUAL_GAMEPAD.axes[0] = Math.max(-1, Math.min(1, x)), this.VIRTUAL_GAMEPAD.axes[1] = Math.max(-1, Math.min(1, y));
+  else gamepad.RightThumbXAxis = x, gamepad.RightThumbYAxis = -y, this.VIRTUAL_GAMEPAD.axes[2] = Math.max(-1, Math.min(1, x)), this.VIRTUAL_GAMEPAD.axes[3] = Math.max(-1, Math.min(1, y));
+  this.VIRTUAL_GAMEPAD.timestamp = performance.now(), window.BX_EXPOSED.inputChannel?.sendGamepadInput(performance.now(), [this.xCloudGamepad]);
+ }
+ vectorLength = (x, y) => Math.sqrt(x ** 2 + y ** 2);
+ resetXcloudGamepads() {
+  let index = getStreamPref("mkb.p1.slot") - 1;
+  this.xCloudGamepad = generateVirtualControllerMapping(0, {
+   GamepadIndex: getStreamPref("localCoOp.enabled") ? index : 0,
+   Dirty: !0
+  }), this.VIRTUAL_GAMEPAD.index = index;
+ }
+ pressButton(buttonIndex, pressed) {
+  let xCloudKey = toXcloudGamepadKey(buttonIndex);
+  if (buttonIndex >= 100) {
+   let [valueArr] = this.STICK_MAP[buttonIndex];
+   for (let i = valueArr.length - 1;i >= 0; i--)
+    if (valueArr[i] === buttonIndex) valueArr.splice(i, 1);
+   pressed && valueArr.push(buttonIndex);
+   let value;
+   if (valueArr.length) value = this.STICK_MAP[valueArr[valueArr.length - 1]][1];
+   else value = 0;
+   if (this.xCloudGamepad[xCloudKey] = value, xCloudKey === "LeftThumbXAxis") this.VIRTUAL_GAMEPAD.axes[0] = value;
+   else if (xCloudKey === "LeftThumbYAxis") this.VIRTUAL_GAMEPAD.axes[1] = -value;
+   else if (xCloudKey === "RightThumbXAxis") this.VIRTUAL_GAMEPAD.axes[2] = value;
+   else if (xCloudKey === "RightThumbYAxis") this.VIRTUAL_GAMEPAD.axes[3] = -value;
+  } else {
+   this.xCloudGamepad[xCloudKey] = pressed ? 1 : 0;
+   let btn = this.VIRTUAL_GAMEPAD.buttons[buttonIndex];
+   if (btn) btn.pressed = pressed, btn.value = pressed ? 1 : 0;
+  }
+  this.VIRTUAL_GAMEPAD.timestamp = performance.now(), window.BX_EXPOSED.inputChannel?.sendGamepadInput(performance.now(), [this.xCloudGamepad]);
+ }
+ onKeyboardEvent = (e) => {
+  let isKeyDown = e.type === "keydown";
+  if (e.code === "Escape") {
+   if (e.preventDefault(), this.enabled && isKeyDown) {
+    if (this.escKeyDownTime === -1) this.escKeyDownTime = performance.now();
+    else if (performance.now() - this.escKeyDownTime >= 1000) this.stop();
+   } else this.escKeyDownTime = -1;
+   return;
+  }
+  if (!this.isPolling || !this.PRESET) return;
+  if (window.BX_STREAM_SETTINGS.xCloudPollingMode !== "none") return;
+  let buttonIndex = this.PRESET.mapping[e.code || e.key];
+  if (typeof buttonIndex > "u") return;
+  if (e.repeat) return;
+  e.preventDefault(), this.pressButton(buttonIndex, isKeyDown);
+ };
+ onMouseStopped = () => {
+  if (this.detectMouseStoppedTimeoutId = null, !this.PRESET) return;
+  let analog = this.PRESET.mouse["mapTo"] === 1 ? 0 : 1;
+  this.updateStick(analog, 0, 0);
+ };
+ handleMouseClick(data) {
+  let mouseButton;
+  if (typeof data.mouseButton < "u") mouseButton = data.mouseButton;
+  else if (typeof data.pointerButton < "u") mouseButton = PointerToMouseButton[data.pointerButton];
+  let key = {
+   code: "Mouse" + mouseButton
+  };
+  if (!this.PRESET) return;
+  let buttonIndex = this.PRESET.mapping[key.code];
+  if (typeof buttonIndex > "u") return;
+  this.pressButton(buttonIndex, data.pressed);
+ }
+ handleMouseMove(data) {
+  let preset = this.PRESET;
+  if (!preset) return;
+  let mouseMapTo = preset.mouse["mapTo"];
+  if (mouseMapTo === 0) return;
+  this.detectMouseStoppedTimeoutId && clearTimeout(this.detectMouseStoppedTimeoutId), this.detectMouseStoppedTimeoutId = window.setTimeout(this.onMouseStopped, 50);
+  let deadzoneCounterweight = preset.mouse["deadzoneCounterweight"], x = data.movementX * preset.mouse["sensitivityX"], y = data.movementY * preset.mouse["sensitivityY"], length = this.vectorLength(x, y);
+  if (length !== 0 && length < deadzoneCounterweight) x *= deadzoneCounterweight / length, y *= deadzoneCounterweight / length;
+  else if (length > 1.1) x *= 1.1 / length, y *= 1.1 / length;
+  let analog = mouseMapTo === 1 ? 0 : 1;
+  this.updateStick(analog, x, y);
+ }
+ handleMouseWheel(data) {
+  let code = "";
+  if (data.vertical < 0) code = "ScrollUp";
+  else if (data.vertical > 0) code = "ScrollDown";
+  else if (data.horizontal < 0) code = "ScrollLeft";
+  else if (data.horizontal > 0) code = "ScrollRight";
+  if (!code) return !1;
+  if (!this.PRESET) return !1;
+  let key = {
+   code
+  }, buttonIndex = this.PRESET.mapping[key.code];
+  if (typeof buttonIndex > "u") return !1;
+  if (this.prevWheelCode === null || this.prevWheelCode === key.code) this.wheelStoppedTimeoutId && clearTimeout(this.wheelStoppedTimeoutId), this.pressButton(buttonIndex, !0);
+  return this.wheelStoppedTimeoutId = window.setTimeout(() => {
+   this.prevWheelCode = null, this.pressButton(buttonIndex, !1);
+  }, 20), !0;
+ }
+ async toggle(force) {
+  if (!this.initialized) return;
+  if (typeof force < "u") this.enabled = force;
+  else this.enabled = !this.enabled;
+  if (this.enabled) try {
+    await document.body.requestPointerLock({ unadjustedMovement: !0 });
+   } catch (e) {
+    document.body.requestPointerLock(), console.log(e);
+   }
+  else document.pointerLockElement && document.exitPointerLock();
+ }
+ refreshPresetData() {
+  this.PRESET = window.BX_STREAM_SETTINGS.mkbPreset, this.resetXcloudGamepads();
+ }
+ waitForMouseData(showPopup) {
+  this.popup.toggleVisibility(showPopup);
+ }
+ onPollingModeChanged = (e) => {
+  let move = window.BX_STREAM_SETTINGS.xCloudPollingMode !== "none";
+  this.popup.moveOffscreen(move);
+ };
+ onDialogShown = () => {
+  document.pointerLockElement && document.exitPointerLock();
+ };
+ onPointerLockChange = () => {
+  if (document.pointerLockElement) this.start();
+  else this.stop();
+ };
+ onPointerLockError = (e) => {
+  console.log(e), this.stop();
+ };
+ onPointerLockRequested = () => {
+  this.start();
+ };
+ onPointerLockExited = () => {
+  this.mouseDataProvider?.stop();
+ };
+ handleEvent(event) {
+  switch (event.type) {
+   case BxEvent.POINTER_LOCK_REQUESTED:
+    this.onPointerLockRequested();
+    break;
+   case BxEvent.POINTER_LOCK_EXITED:
+    this.onPointerLockExited();
+    break;
+  }
+ }
+ init() {
+  if (!STATES.browser.capabilities.mkb) {
+   this.initialized = !1;
+   return;
+  }
+  if (this.initialized = !0, this.refreshPresetData(), this.enabled = !1, AppInterface) this.mouseDataProvider = new WebSocketMouseDataProvider(this);
+  else this.mouseDataProvider = new PointerLockMouseDataProvider(this);
+  if (this.mouseDataProvider.init(), window.addEventListener("keydown", this.onKeyboardEvent, !0), window.addEventListener("keyup", this.onKeyboardEvent, !0), window.addEventListener(BxEvent.XCLOUD_POLLING_MODE_CHANGED, this.onPollingModeChanged), BxEventBus.Script.on("dialog.shown", this.onDialogShown), AppInterface) window.addEventListener(BxEvent.POINTER_LOCK_REQUESTED, this), window.addEventListener(BxEvent.POINTER_LOCK_EXITED, this);
+  else document.addEventListener("pointerlockchange", this.onPointerLockChange), document.addEventListener("pointerlockerror", this.onPointerLockError);
+  if (MkbPopup.getInstance().reset(), AppInterface) {
+   let shortcutKey = StreamSettings.findKeyboardShortcut("mkb.toggle");
+   if (shortcutKey) {
+    let msg = t("press-key-to-toggle-mkb", { key: `<b>${KeyHelper.codeToKeyName(shortcutKey)}</b>` });
+    Toast.show(msg, t("native-mkb"), { html: !0 });
+   }
+   this.waitForMouseData(!1);
+  } else this.waitForMouseData(!0);
+ }
+ destroy() {
+  if (!this.initialized) return;
+  if (this.initialized = !1, this.isPolling = !1, this.enabled = !1, this.stop(), this.waitForMouseData(!1), document.exitPointerLock(), window.removeEventListener("keydown", this.onKeyboardEvent, !0), window.removeEventListener("keyup", this.onKeyboardEvent, !0), AppInterface) window.removeEventListener(BxEvent.POINTER_LOCK_REQUESTED, this), window.removeEventListener(BxEvent.POINTER_LOCK_EXITED, this);
+  else document.removeEventListener("pointerlockchange", this.onPointerLockChange), document.removeEventListener("pointerlockerror", this.onPointerLockError);
+  window.removeEventListener(BxEvent.XCLOUD_POLLING_MODE_CHANGED, this.onPollingModeChanged), BxEventBus.Script.off("dialog.shown", this.onDialogShown), this.mouseDataProvider?.destroy(), window.removeEventListener(BxEvent.XCLOUD_POLLING_MODE_CHANGED, this.onPollingModeChanged);
+ }
+ start() {
+  if (!this.enabled) this.enabled = !0, Toast.show(t("virtual-controller"), t("enabled"), { instant: !0 });
+  this.isPolling = !0, this.escKeyDownTime = -1, window.BX_EXPOSED.toggleLocalCoOp(getStreamPref("localCoOp.enabled")), this.resetXcloudGamepads(), window.navigator.getGamepads = this.patchedGetGamepads;
+  try {
+   Navigator.prototype.getGamepads = this.patchedGetGamepads;
+  } catch (e) {}
+  this.waitForMouseData(!1), this.mouseDataProvider?.start();
+  let virtualGamepad = this.getVirtualGamepad();
+  virtualGamepad.connected = !0, virtualGamepad.timestamp = performance.now(), BxEvent.dispatch(window, "gamepadconnected", {
+   gamepad: virtualGamepad
+  }), window.BX_EXPOSED.stopTakRendering = !0, Toast.show(t("virtual-controller"), t("enabled"), { instant: !0 });
+ }
+ stop() {
+  this.enabled = !1, this.isPolling = !1, this.escKeyDownTime = -1;
+  let virtualGamepad = this.getVirtualGamepad();
+  if (virtualGamepad.connected) {
+   this.resetXcloudGamepads(), virtualGamepad.connected = !1, virtualGamepad.timestamp = performance.now(), BxEvent.dispatch(window, "gamepaddisconnected", {
+    gamepad: virtualGamepad
+   }), window.navigator.getGamepads = this.nativeGetGamepads;
+   try {
+    Navigator.prototype.getGamepads = this.nativeGetGamepads;
+   } catch (e) {}
+  }
+  this.waitForMouseData(!0), this.mouseDataProvider?.stop();
+ }
+ static setupEvents() {
+  if (BxEventBus.Stream.on("state.playing", () => {
+   if (STATES.currentStream.titleInfo?.details.hasMkbSupport) NativeMkbHandler.getInstance()?.init();
+   else EmulatedMkbHandler.getInstance()?.init();
+  }), EmulatedMkbHandler.isAllowed())
+   BxEventBus.Stream.on("mkb.setting.updated", () => {
+    EmulatedMkbHandler.getInstance()?.refreshPresetData();
+   });
+ }
+}
+var VIRTUAL_GAMEPAD_ID_LOCAL = "Better xCloud Virtual Controller", XCLOUD_KEY_TO_GAMEPAD_INDEX = {
  A: 0,
  B: 1,
  X: 2,
@@ -3945,7 +4479,7 @@ class PlayXboxGamepad {
  static homeStates = new Map;
  static syntheticHomeUntil = new Map;
  static sharePrevPressed = new Map;
- static guideOpenChecker = null;
+ static callbacks = null;
  static getRawGamepads() {
   try {
    return Array.from(PlayXboxGamepad.rawGetGamepads() || []);
@@ -3954,13 +4488,13 @@ class PlayXboxGamepad {
   }
  }
  static setGuideOpenChecker(fn) {
-  PlayXboxGamepad.guideOpenChecker = fn;
+  if (PlayXboxGamepad.callbacks) PlayXboxGamepad.callbacks.isGuideOpen = fn;
  }
  static setDialogNeutralMode(enabled) {
   if (PlayXboxGamepad.dialogNeutralMode = enabled, !enabled) PlayXboxGamepad.neutralCache.clear();
  }
- static install() {
-  if (PlayXboxGamepad.installed || window.location.hostname !== "play.xbox.com") return;
+ static install(callbacks) {
+  if (PlayXboxGamepad.callbacks = callbacks, PlayXboxGamepad.installed || window.location.hostname !== "play.xbox.com") return;
   PlayXboxGamepad.installed = !0;
   let patched = () => PlayXboxGamepad.getProcessedGamepads();
   try {
@@ -4026,7 +4560,7 @@ class PlayXboxGamepad {
     result.push(null);
     continue;
    }
-   if (gp.id === VIRTUAL_GAMEPAD_ID) {
+   if (gp.id === VIRTUAL_GAMEPAD_ID_LOCAL) {
     result.push(gp);
     continue;
    }
@@ -4038,7 +4572,7 @@ class PlayXboxGamepad {
     PlayXboxGamepad.homeStates.delete(gp.index), PlayXboxGamepad.syntheticHomeUntil.delete(gp.index), result.push(gp);
     continue;
    }
-   if (!PlayXboxGamepad.knownGamepadIds.has(gp.id)) PlayXboxGamepad.knownGamepadIds.add(gp.id), StreamSettings.refreshControllerSettings();
+   if (!PlayXboxGamepad.knownGamepadIds.has(gp.id)) PlayXboxGamepad.knownGamepadIds.add(gp.id), PlayXboxGamepad.callbacks?.refreshControllerSettings();
    let controllerSettings = window.BX_STREAM_SETTINGS?.controllers?.[gp.id], shortcuts = controllerSettings?.shortcuts, hasShortcuts = !!shortcuts && Object.keys(shortcuts).length > 0, customization = controllerSettings?.customization, hasCustomization = !!customization && (Object.keys(customization.mapping || {}).length > 0 || Object.keys(customization.ranges || {}).length > 0), sharePressed = !!gp.buttons[17]?.pressed, wasSharePressed = !!PlayXboxGamepad.sharePrevPressed.get(gp.index);
    PlayXboxGamepad.sharePrevPressed.set(gp.index, sharePressed);
    let shareRemapped = !1;
@@ -4049,20 +4583,20 @@ class PlayXboxGamepad {
     result.push(gp);
     continue;
    }
-   let cloned = PlayXboxGamepad.cloneGamepad(gp), modified2 = !1, isGuideOpen = PlayXboxGamepad.guideOpenChecker ? PlayXboxGamepad.guideOpenChecker() : !1, homeBtn = gp.buttons[16];
+   let cloned = PlayXboxGamepad.cloneGamepad(gp), modified2 = !1, isGuideOpen = PlayXboxGamepad.callbacks ? PlayXboxGamepad.callbacks.isGuideOpen() : !1, homeBtn = gp.buttons[16];
    if (hasShortcuts && homeBtn && !isGuideOpen) {
     let state = PlayXboxGamepad.homeStates.get(gp.index);
     if (homeBtn.pressed) {
-     if (!state) ControllerShortcut.reset(gp.index), state = {
+     if (!state) PlayXboxGamepad.callbacks?.resetShortcut(gp.index), state = {
        pressedAt: now,
        shortcutTriggered: !1,
        suppressedButtons: new Set
       }, PlayXboxGamepad.homeStates.set(gp.index, state);
-     if (cloned.buttons[16] = { pressed: !1, touched: !1, value: 0 }, modified2 = !0, ControllerShortcut.handle(gp)) state.shortcutTriggered = !0;
+     if (cloned.buttons[16] = { pressed: !1, touched: !1, value: 0 }, modified2 = !0, PlayXboxGamepad.callbacks ? PlayXboxGamepad.callbacks.handleShortcut(gp) : !1) state.shortcutTriggered = !0;
      for (let b = 0;b < gp.buttons.length; b++)
       if (b !== 16 && gp.buttons[b]?.pressed) state.suppressedButtons.add(b), cloned.buttons[b] = { pressed: !1, touched: !1, value: 0 };
     } else if (state) {
-     if (PlayXboxGamepad.homeStates.delete(gp.index), ControllerShortcut.reset(gp.index), !state.shortcutTriggered) PlayXboxGamepad.syntheticHomeUntil.set(gp.index, now + 110);
+     if (PlayXboxGamepad.homeStates.delete(gp.index), PlayXboxGamepad.callbacks?.resetShortcut(gp.index), !state.shortcutTriggered) PlayXboxGamepad.syntheticHomeUntil.set(gp.index, now + 110);
     }
    }
    let activeSynthUntil = PlayXboxGamepad.syntheticHomeUntil.get(gp.index) || 0;
@@ -4834,6 +5368,318 @@ function resizeVideoPlayer() {
  STATES.currentStream.streamPlayerManager?.resizePlayer();
 }
 window.addEventListener("resize", resizeVideoPlayer);
+class NavigationDialog {
+ dialogManager;
+ onMountedCallbacks = [];
+ constructor() {
+  this.dialogManager = NavigationDialogManager.getInstance();
+ }
+ isCancellable() {
+  return !0;
+ }
+ isOverlayVisible() {
+  return !0;
+ }
+ show(configs = {}, clearStack = !1) {
+  if (NavigationDialogManager.getInstance().show(this, configs, clearStack), !this.getFocusedElement()) this.focusIfNeeded();
+ }
+ hide() {
+  NavigationDialogManager.getInstance().hide();
+ }
+ getFocusedElement() {
+  let $activeElement = document.activeElement;
+  if (!$activeElement) return null;
+  if (this.$container.contains($activeElement)) return $activeElement;
+  return null;
+ }
+ onBeforeMount(configs = {}) {}
+ onMounted(configs = {}) {
+  for (let callback of this.onMountedCallbacks)
+   callback.call(this);
+ }
+ onBeforeUnmount() {}
+ onUnmounted() {}
+ handleKeyPress(key) {
+  return !1;
+ }
+ handleGamepad(button) {
+  return !1;
+ }
+}
+class NavigationDialogManager {
+ static instance;
+ static getInstance = () => NavigationDialogManager.instance ?? (NavigationDialogManager.instance = new NavigationDialogManager);
+ LOG_TAG = "NavigationDialogManager";
+ static GAMEPAD_POLLING_INTERVAL = 50;
+ static GAMEPAD_KEYS = [
+  0,
+  1,
+  2,
+  3,
+  12,
+  15,
+  13,
+  14,
+  4,
+  5,
+  6,
+  7,
+  10,
+  11,
+  8,
+  9
+ ];
+ static GAMEPAD_DIRECTION_MAP = {
+  12: 1,
+  13: 3,
+  14: 4,
+  15: 2,
+  100: 1,
+  101: 3,
+  102: 4,
+  103: 2
+ };
+ static SIBLING_PROPERTY_MAP = {
+  horizontal: {
+   4: "previousElementSibling",
+   2: "nextElementSibling"
+  },
+  vertical: {
+   1: "previousElementSibling",
+   3: "nextElementSibling"
+  }
+ };
+ gamepadPollingIntervalId = null;
+ gamepadLastStates = [];
+ gamepadHoldingIntervalId = null;
+ $overlay;
+ $container;
+ dialog = null;
+ dialogsStack = [];
+ constructor() {
+  if (BxLogger.info(this.LOG_TAG, "constructor()"), this.$overlay = CE("div", { class: "bx-navigation-dialog-overlay bx-gone" }), this.$overlay.addEventListener("click", (e) => {
+   e.preventDefault(), e.stopPropagation(), this.dialog?.isCancellable() && this.hide();
+  }), this.$container = CE("div", { class: "bx-navigation-dialog bx-gone" }), window.location.hostname !== "play.xbox.com")
+   document.documentElement.appendChild(this.$overlay), document.documentElement.appendChild(this.$container);
+  window.addEventListener(BxEvent.XCLOUD_GUIDE_MENU_SHOWN, (e) => this.hide()), new MutationObserver((mutationList) => {
+   if (mutationList.length === 0 || mutationList[0].addedNodes.length === 0) return;
+   let $dialog = mutationList[0].addedNodes[0];
+   if (!$dialog || !($dialog instanceof HTMLElement)) return;
+   calculateSelectBoxes($dialog);
+  }).observe(this.$container, { childList: !0 });
+ }
+ updateActiveInput(input) {
+  document.documentElement.dataset.activeInput = input;
+ }
+ handleEvent(event) {
+  switch (event.type) {
+   case "keydown":
+    this.updateActiveInput("keyboard");
+    let $target = event.target, keyboardEvent = event, keyCode = keyboardEvent.code || keyboardEvent.key, handled = this.dialog?.handleKeyPress(keyCode);
+    if (handled) {
+     event.preventDefault(), event.stopPropagation();
+     return;
+    }
+    if (keyCode === "ArrowUp" || keyCode === "ArrowDown") handled = !0, this.focusDirection(keyCode === "ArrowUp" ? 1 : 3);
+    else if (keyCode === "ArrowLeft" || keyCode === "ArrowRight") {
+     if (!($target instanceof HTMLInputElement && ($target.type === "text" || $target.type === "range"))) handled = !0, this.focusDirection(keyCode === "ArrowLeft" ? 4 : 2);
+    } else if (keyCode === "Enter" || keyCode === "NumpadEnter" || keyCode === "Space") {
+     if (!($target instanceof HTMLInputElement && $target.type === "text")) handled = !0, $target.dispatchEvent(new MouseEvent("click", { bubbles: !0 }));
+    } else if (keyCode === "Escape") handled = !0, this.hide();
+    if (handled) event.preventDefault(), event.stopPropagation();
+    break;
+  }
+ }
+ isShowing() {
+  return this.$container && !this.$container.classList.contains("bx-gone");
+ }
+ pollGamepad = () => {
+  let gamepads = PlayXboxGamepad.getRawGamepads();
+  for (let gamepad of gamepads) {
+   if (!gamepad || !gamepad.connected) continue;
+   if (gamepad.id === VIRTUAL_GAMEPAD_ID) continue;
+   let { axes, buttons } = gamepad, releasedButton = null, heldButton = null, lastState = this.gamepadLastStates[gamepad.index], lastTimestamp, lastKey, lastKeyPressed;
+   if (lastState) [lastTimestamp, lastKey, lastKeyPressed] = lastState;
+   if (lastTimestamp && lastTimestamp === gamepad.timestamp) continue;
+   for (let key of NavigationDialogManager.GAMEPAD_KEYS) {
+    let btn = buttons[key];
+    if (!btn) continue;
+    if (lastKey === key && !btn.pressed) {
+     releasedButton = key;
+     break;
+    } else if (btn.pressed) {
+     heldButton = key;
+     break;
+    }
+   }
+   if (heldButton === null && releasedButton === null && axes && axes.length >= 2) {
+    if (lastKey) {
+     let releasedHorizontal = Math.abs(axes[0]) < 0.1 && (lastKey === 102 || lastKey === 103), releasedVertical = Math.abs(axes[1]) < 0.1 && (lastKey === 100 || lastKey === 101);
+     if (releasedHorizontal || releasedVertical) releasedButton = lastKey;
+     else heldButton = lastKey;
+    } else if (axes[0] < -0.5) heldButton = 102;
+    else if (axes[0] > 0.5) heldButton = 103;
+    else if (axes[1] < -0.5) heldButton = 100;
+    else if (axes[1] > 0.5) heldButton = 101;
+   }
+   if (heldButton !== null) {
+    if (this.gamepadLastStates[gamepad.index] = [gamepad.timestamp, heldButton, !1], this.clearGamepadHoldingInterval(), NavigationDialogManager.GAMEPAD_DIRECTION_MAP[heldButton]) this.gamepadHoldingIntervalId = window.setInterval(() => {
+      let lastState2 = this.gamepadLastStates[gamepad.index];
+      if (lastState2) {
+       if ([lastTimestamp, lastKey, lastKeyPressed] = lastState2, lastKey === heldButton) {
+        this.handleGamepad(gamepad, heldButton);
+        return;
+       }
+      }
+      this.clearGamepadHoldingInterval();
+     }, 100);
+    continue;
+   }
+   if (releasedButton === null) {
+    this.clearGamepadHoldingInterval();
+    continue;
+   }
+   if (this.gamepadLastStates[gamepad.index] = null, lastKeyPressed) return;
+   if (this.updateActiveInput("gamepad"), this.handleGamepad(gamepad, releasedButton)) return;
+   if (releasedButton === 0) {
+    document.activeElement?.dispatchEvent(new MouseEvent("click", { bubbles: !0 }));
+    return;
+   } else if (releasedButton === 1) {
+    this.hide();
+    return;
+   }
+  }
+ };
+ handleGamepad(gamepad, key) {
+  let handled = this.dialog?.handleGamepad(key);
+  if (handled) return !0;
+  let direction = NavigationDialogManager.GAMEPAD_DIRECTION_MAP[key];
+  if (!direction) return !1;
+  if (document.activeElement instanceof HTMLInputElement && document.activeElement.type === "range") {
+   let $range = document.activeElement;
+   if (direction === 4 || direction === 2) {
+    let $numberStepper = $range.closest(".bx-number-stepper");
+    if ($numberStepper) BxNumberStepper.change.call($numberStepper, direction === 4 ? "dec" : "inc");
+    else $range.value = (parseInt($range.value) + parseInt($range.step) * (direction === 4 ? -1 : 1)).toString(), $range.dispatchEvent(new InputEvent("input"));
+    handled = !0;
+   }
+  }
+  if (!handled) this.focusDirection(direction);
+  return this.gamepadLastStates[gamepad.index] && (this.gamepadLastStates[gamepad.index][2] = !0), !0;
+ }
+ clearGamepadHoldingInterval() {
+  this.gamepadHoldingIntervalId && window.clearInterval(this.gamepadHoldingIntervalId), this.gamepadHoldingIntervalId = null;
+ }
+ show(dialog, configs = {}, clearStack = !1) {
+  this.clearGamepadHoldingInterval(), BxEventBus.Script.emit("dialog.shown", {}), window.BX_EXPOSED.disableGamepadPolling = !0, document.body.classList.add("bx-no-scroll"), this.unmountCurrentDialog();
+  let host = document.fullscreenElement || document.documentElement;
+  if (this.$overlay.parentElement !== host) host.appendChild(this.$overlay);
+  if (this.$container.parentElement !== host) host.appendChild(this.$container);
+  this.dialogsStack.push(dialog), this.dialog = dialog, dialog.onBeforeMount(configs), this.$container.appendChild(dialog.getContent()), dialog.onMounted(configs), this.$overlay.classList.remove("bx-gone"), this.$overlay.classList.toggle("bx-invisible", !dialog.isOverlayVisible()), this.$container.classList.remove("bx-gone"), this.$container.addEventListener("keydown", this), this.startGamepadPolling();
+ }
+ hide() {
+  if (this.clearGamepadHoldingInterval(), this.stopGamepadPolling(), !this.isShowing()) return;
+  if (document.body.classList.remove("bx-no-scroll"), BxEventBus.Script.emit("dialog.dismissed", {}), this.$overlay.classList.add("bx-gone"), this.$overlay.classList.remove("bx-invisible"), this.$container.classList.add("bx-gone"), this.$container.removeEventListener("keydown", this), this.stopGamepadPolling(), this.dialog) {
+   let dialogIndex = this.dialogsStack.indexOf(this.dialog);
+   if (dialogIndex > -1) this.dialogsStack = this.dialogsStack.slice(0, dialogIndex);
+  }
+  if (this.unmountCurrentDialog(), window.BX_EXPOSED.disableGamepadPolling = !1, this.dialogsStack.length) this.dialogsStack[this.dialogsStack.length - 1].show();
+  else if (window.location.hostname === "play.xbox.com" && STATES.isPlaying) window.setTimeout(() => {
+    if (this.isShowing()) return;
+    let $streamTarget = document.querySelector('[data-testid="media-container"] video, [data-testid="media-container"], #game-stream video, #game-stream');
+    if ($streamTarget) {
+     if ($streamTarget.tabIndex < 0) $streamTarget.tabIndex = -1;
+     $streamTarget.focus({ preventScroll: !0 });
+    }
+   }, 60);
+ }
+ focus($elm) {
+  if (!$elm) return !1;
+  if ($elm.nearby && $elm.nearby.focus) if ($elm.nearby.focus instanceof HTMLElement) return this.focus($elm.nearby.focus);
+   else return $elm.nearby.focus();
+  return $elm.focus(), $elm === document.activeElement;
+ }
+ getOrientation($elm) {
+  let nearby = $elm.nearby || {};
+  if (nearby.selfOrientation) return nearby.selfOrientation;
+  let orientation, $current = $elm.parentElement;
+  while ($current !== this.$container) {
+   let tmp = $current.nearby?.orientation;
+   if ($current.nearby && tmp) {
+    orientation = tmp;
+    break;
+   }
+   $current = $current.parentElement;
+  }
+  return orientation = orientation || "vertical", setNearby($elm, {
+   selfOrientation: orientation
+  }), orientation;
+ }
+ findNextTarget($focusing, direction, checkParent = !1, checked = []) {
+  if (!$focusing || $focusing === this.$container) return null;
+  if (checked.includes($focusing)) return null;
+  checked.push($focusing);
+  let $target = $focusing, $parent = $target.parentElement, nearby = $target.nearby || {}, orientation = this.getOrientation($target);
+  if (nearby[1] && direction === 1) return nearby[1];
+  else if (nearby[3] && direction === 3) return nearby[3];
+  else if (nearby[4] && direction === 4) return nearby[4];
+  else if (nearby[2] && direction === 2) return nearby[2];
+  let siblingProperty = NavigationDialogManager.SIBLING_PROPERTY_MAP[orientation][direction];
+  if (siblingProperty) {
+   let $sibling = $target;
+   while ($sibling[siblingProperty]) {
+    $sibling = $sibling[siblingProperty];
+    let $focusable = this.findFocusableElement($sibling, direction);
+    if ($focusable) return $focusable;
+   }
+  }
+  if (nearby.loop) {
+   if (nearby.loop(direction)) return null;
+  }
+  if (checkParent) return this.findNextTarget($parent, direction, checkParent, checked);
+  return null;
+ }
+ findFocusableElement($elm, direction) {
+  if (!$elm) return null;
+  if (!!$elm.disabled) return null;
+  if (!isElementVisible($elm)) return null;
+  if ($elm.tabIndex > -1) return $elm;
+  let focus = $elm.nearby?.focus;
+  if (focus) {
+   if (focus instanceof HTMLElement) return this.findFocusableElement(focus, direction);
+   else if (typeof focus === "function") {
+    if (focus()) return document.activeElement;
+   }
+  }
+  let children = Array.from($elm.children), orientation = $elm.nearby?.orientation || "vertical";
+  if (orientation === "horizontal" || orientation === "vertical" && direction === 1) children.reverse();
+  for (let $child of children) {
+   if (!$child || !($child instanceof HTMLElement)) return null;
+   let $target = this.findFocusableElement($child, direction);
+   if ($target) return $target;
+  }
+  return null;
+ }
+ startGamepadPolling() {
+  if (this.stopGamepadPolling(), window.location.hostname === "play.xbox.com") PlayXboxGamepad.setDialogNeutralMode(!0);
+  this.gamepadPollingIntervalId = window.setInterval(this.pollGamepad, NavigationDialogManager.GAMEPAD_POLLING_INTERVAL);
+ }
+ stopGamepadPolling() {
+  if (this.gamepadLastStates = [], this.gamepadPollingIntervalId && window.clearInterval(this.gamepadPollingIntervalId), this.gamepadPollingIntervalId = null, window.location.hostname === "play.xbox.com") PlayXboxGamepad.setDialogNeutralMode(!1);
+ }
+ focusDirection(direction) {
+  let dialog = this.dialog;
+  if (!dialog) return;
+  let $focusing = dialog.getFocusedElement();
+  if (!$focusing || !this.findFocusableElement($focusing, direction)) return dialog.focusIfNeeded(), null;
+  let $target = this.findNextTarget($focusing, direction, !0);
+  this.focus($target);
+ }
+ unmountCurrentDialog() {
+  let dialog = this.dialog;
+  dialog && dialog.onBeforeUnmount(), this.$container.firstChild?.remove(), dialog && dialog.onUnmounted(), this.dialog = null;
+ }
+}
 var LOG_TAG = "TouchController";
 class TouchController {
  static #EVENT_SHOW_DEFAULT_CONTROLLER = new MessageEvent("message", {
@@ -8070,858 +8916,6 @@ class SettingsDialog extends NavigationDialog {
   return handled;
  }
 }
-class MkbPopup {
- static instance;
- static getInstance = () => MkbPopup.instance ?? (MkbPopup.instance = new MkbPopup);
- popupType;
- $popup;
- $title;
- $btnActivate;
- mkbHandler;
- constructor() {
-  this.render(), BxEventBus.Stream.on("keyboardShortcuts.updated", () => {
-   let $newButton = this.createActivateButton();
-   this.$btnActivate.replaceWith($newButton), this.$btnActivate = $newButton;
-  });
- }
- attachMkbHandler(handler) {
-  this.mkbHandler = handler, this.popupType = handler instanceof NativeMkbHandler ? "native" : "virtual", this.$popup.dataset.type = this.popupType, this.$title.innerText = t(this.popupType === "native" ? "native-mkb" : "virtual-controller");
- }
- toggleVisibility(show) {
-  if (show && !this.$popup.isConnected) document.documentElement.appendChild(this.$popup);
-  this.$popup.classList.toggle("bx-gone", !show), show && this.moveOffscreen(!1);
- }
- moveOffscreen(doMove) {
-  this.$popup.classList.toggle("bx-offscreen", doMove);
- }
- createActivateButton() {
-  let options = {
-   style: 1 | 1024 | 128,
-   label: t("activate"),
-   onClick: this.onActivate
-  }, shortcutKey = StreamSettings.findKeyboardShortcut("mkb.toggle");
-  if (shortcutKey) options.secondaryText = t("press-key-to-toggle-mkb", { key: KeyHelper.codeToKeyName(shortcutKey) });
-  return createButton(options);
- }
- onActivate = (e) => {
-  e.preventDefault(), this.mkbHandler.toggle(!0);
- };
- render() {
-  if (this.$popup = CE("div", { class: "bx-mkb-pointer-lock-msg bx-gone" }, this.$title = CE("p"), this.$btnActivate = this.createActivateButton(), CE("div", !1, createButton({
-   label: t("ignore"),
-   style: 8,
-   onClick: (e) => {
-    e.preventDefault(), this.mkbHandler.toggle(!1), this.mkbHandler.waitForMouseData(!1);
-   }
-  }), createButton({
-   label: t("manage"),
-   icon: BxIcon.MANAGE,
-   style: 64,
-   onClick: () => {
-    let dialog = SettingsDialog.getInstance();
-    dialog.focusTab("mkb"), dialog.show();
-   }
-  }))), window.location.hostname !== "play.xbox.com")
-   document.documentElement.appendChild(this.$popup);
- }
- reset() {
-  this.toggleVisibility(!0), this.moveOffscreen(!1);
- }
-}
-class NativeMkbHandler extends MkbHandler {
- static instance;
- static getInstance() {
-  if (typeof NativeMkbHandler.instance > "u") if (NativeMkbHandler.isAllowed()) NativeMkbHandler.instance = new NativeMkbHandler;
-   else NativeMkbHandler.instance = null;
-  return NativeMkbHandler.instance;
- }
- LOG_TAG = "NativeMkbHandler";
- static isAllowed = () => STATES.browser.capabilities.emulatedNativeMkb && getGlobalPref("nativeMkb.mode") === "on";
- pointerClient;
- enabled = !1;
- mouseButtonsPressed = 0;
- mouseVerticalMultiply = 0;
- mouseHorizontalMultiply = 0;
- inputChannel;
- popup;
- constructor() {
-  super();
-  BxLogger.info(this.LOG_TAG, "constructor()"), this.popup = MkbPopup.getInstance(), this.popup.attachMkbHandler(this);
- }
- onKeyboardEvent(e) {
-  if (e.type === "keyup" && e.code === "F8") {
-   e.preventDefault(), this.toggle();
-   return;
-  }
- }
- onPointerLockRequested(e) {
-  AppInterface.requestPointerCapture(), this.start();
- }
- onPointerLockExited(e) {
-  AppInterface.releasePointerCapture(), this.stop();
- }
- onPollingModeChanged = (e) => {
-  let move = window.BX_STREAM_SETTINGS.xCloudPollingMode !== "none";
-  this.popup.moveOffscreen(move);
- };
- onDialogShown = () => {
-  document.pointerLockElement && document.exitPointerLock();
- };
- handleEvent(event) {
-  switch (event.type) {
-   case "keyup":
-    this.onKeyboardEvent(event);
-    break;
-   case BxEvent.POINTER_LOCK_REQUESTED:
-    this.onPointerLockRequested(event);
-    break;
-   case BxEvent.POINTER_LOCK_EXITED:
-    this.onPointerLockExited(event);
-    break;
-   case BxEvent.XCLOUD_POLLING_MODE_CHANGED:
-    this.onPollingModeChanged(event);
-    break;
-  }
- }
- init() {
-  this.pointerClient = PointerClient.getInstance(), this.inputChannel = window.BX_EXPOSED.inputChannel, this.updateInputConfigurationAsync(!1);
-  try {
-   this.pointerClient.start(STATES.pointerServerPort, this);
-  } catch (e) {
-   Toast.show("Cannot enable Mouse & Keyboard feature");
-  }
-  this.mouseVerticalMultiply = getStreamPref("nativeMkb.scroll.sensitivityY"), this.mouseHorizontalMultiply = getStreamPref("nativeMkb.scroll.sensitivityX"), window.addEventListener("keyup", this), window.addEventListener(BxEvent.POINTER_LOCK_REQUESTED, this), window.addEventListener(BxEvent.POINTER_LOCK_EXITED, this), window.addEventListener(BxEvent.XCLOUD_POLLING_MODE_CHANGED, this), BxEventBus.Script.on("dialog.shown", this.onDialogShown);
-  let shortcutKey = StreamSettings.findKeyboardShortcut("mkb.toggle");
-  if (shortcutKey) {
-   let msg = t("press-key-to-toggle-mkb", { key: `<b>${KeyHelper.codeToKeyName(shortcutKey)}</b>` });
-   Toast.show(msg, t("native-mkb"), { html: !0 });
-  }
-  this.waitForMouseData(!1);
- }
- toggle(force) {
-  let setEnable;
-  if (typeof force < "u") setEnable = force;
-  else setEnable = !this.enabled;
-  if (setEnable) document.documentElement.requestPointerLock();
-  else document.exitPointerLock();
- }
- updateInputConfigurationAsync(enabled) {
-  window.BX_EXPOSED.streamSession.updateInputConfigurationAsync({
-   enableKeyboardInput: enabled,
-   enableMouseInput: enabled,
-   enableAbsoluteMouse: !1,
-   enableTouchInput: !1
-  });
- }
- start() {
-  this.resetMouseInput(), this.enabled = !0, this.updateInputConfigurationAsync(!0), window.BX_EXPOSED.stopTakRendering = !0, this.waitForMouseData(!1), Toast.show(t("native-mkb"), t("enabled"), { instant: !0 });
- }
- stop() {
-  this.resetMouseInput(), this.enabled = !1, this.updateInputConfigurationAsync(!1), this.waitForMouseData(!0);
- }
- destroy() {
-  this.pointerClient?.stop(), this.stop(), window.removeEventListener("keyup", this), window.removeEventListener(BxEvent.POINTER_LOCK_REQUESTED, this), window.removeEventListener(BxEvent.POINTER_LOCK_EXITED, this), window.removeEventListener(BxEvent.XCLOUD_POLLING_MODE_CHANGED, this), BxEventBus.Script.off("dialog.shown", this.onDialogShown), this.waitForMouseData(!1), document.exitPointerLock();
- }
- handleMouseMove(data) {
-  this.sendMouseInput({
-   X: data.movementX,
-   Y: data.movementY,
-   Buttons: this.mouseButtonsPressed,
-   WheelX: 0,
-   WheelY: 0
-  });
- }
- handleMouseClick(data) {
-  let { pointerButton, pressed } = data;
-  if (pressed) this.mouseButtonsPressed |= pointerButton;
-  else this.mouseButtonsPressed ^= pointerButton;
-  this.mouseButtonsPressed = Math.max(0, this.mouseButtonsPressed), this.sendMouseInput({
-   X: 0,
-   Y: 0,
-   Buttons: this.mouseButtonsPressed,
-   WheelX: 0,
-   WheelY: 0
-  });
- }
- handleMouseWheel(data) {
-  let { vertical, horizontal } = data, mouseWheelX = horizontal;
-  if (this.mouseHorizontalMultiply && this.mouseHorizontalMultiply !== 1) mouseWheelX *= this.mouseHorizontalMultiply;
-  let mouseWheelY = vertical;
-  if (this.mouseVerticalMultiply && this.mouseVerticalMultiply !== 1) mouseWheelY *= this.mouseVerticalMultiply;
-  return this.sendMouseInput({
-   X: 0,
-   Y: 0,
-   Buttons: this.mouseButtonsPressed,
-   WheelX: mouseWheelX,
-   WheelY: mouseWheelY
-  }), !0;
- }
- setVerticalScrollMultiplier(vertical) {
-  this.mouseVerticalMultiply = vertical;
- }
- setHorizontalScrollMultiplier(horizontal) {
-  this.mouseHorizontalMultiply = horizontal;
- }
- waitForMouseData(showPopup) {
-  this.popup.toggleVisibility(showPopup);
- }
- isEnabled() {
-  return this.enabled;
- }
- sendMouseInput(data) {
-  data.Type = 0, this.inputChannel?.queueMouseInput(data);
- }
- resetMouseInput() {
-  this.mouseButtonsPressed = 0, this.sendMouseInput({
-   X: 0,
-   Y: 0,
-   Buttons: 0,
-   WheelX: 0,
-   WheelY: 0
-  });
- }
-}
-var PointerToMouseButton = {
- 1: 0,
- 2: 2,
- 4: 1
-}, VIRTUAL_GAMEPAD_ID = "Better xCloud Virtual Controller";
-class WebSocketMouseDataProvider extends MouseDataProvider {
- pointerClient;
- isConnected = !1;
- init() {
-  this.pointerClient = PointerClient.getInstance(), this.isConnected = !1;
-  try {
-   this.pointerClient.start(STATES.pointerServerPort, this.mkbHandler), this.isConnected = !0;
-  } catch (e) {
-   Toast.show("Cannot enable Mouse & Keyboard feature");
-  }
- }
- start() {
-  this.isConnected && AppInterface.requestPointerCapture();
- }
- stop() {
-  this.isConnected && AppInterface.releasePointerCapture();
- }
- destroy() {
-  this.isConnected && this.pointerClient?.stop();
- }
-}
-class PointerLockMouseDataProvider extends MouseDataProvider {
- start() {
-  window.addEventListener("mousemove", this.onMouseMoveEvent), window.addEventListener("mousedown", this.onMouseEvent), window.addEventListener("mouseup", this.onMouseEvent), window.addEventListener("wheel", this.onWheelEvent, { passive: !1 }), window.addEventListener("contextmenu", this.disableContextMenu);
- }
- stop() {
-  document.pointerLockElement && document.exitPointerLock(), window.removeEventListener("mousemove", this.onMouseMoveEvent), window.removeEventListener("mousedown", this.onMouseEvent), window.removeEventListener("mouseup", this.onMouseEvent), window.removeEventListener("wheel", this.onWheelEvent), window.removeEventListener("contextmenu", this.disableContextMenu);
- }
- onMouseMoveEvent = (e) => {
-  this.mkbHandler.handleMouseMove({
-   movementX: e.movementX,
-   movementY: e.movementY
-  });
- };
- onMouseEvent = (e) => {
-  e.preventDefault();
-  let data = {
-   mouseButton: e.button,
-   pressed: e.type === "mousedown"
-  };
-  this.mkbHandler.handleMouseClick(data);
- };
- onWheelEvent = (e) => {
-  if (!KeyHelper.getKeyFromEvent(e)) return;
-  let data = {
-   vertical: e.deltaY,
-   horizontal: e.deltaX
-  };
-  if (this.mkbHandler.handleMouseWheel(data)) e.preventDefault();
- };
- disableContextMenu = (e) => e.preventDefault();
-}
-class EmulatedMkbHandler extends MkbHandler {
- static instance;
- static getInstance() {
-  if (typeof EmulatedMkbHandler.instance > "u") if (EmulatedMkbHandler.isAllowed()) EmulatedMkbHandler.instance = new EmulatedMkbHandler;
-   else EmulatedMkbHandler.instance = null;
-  return EmulatedMkbHandler.instance;
- }
- static LOG_TAG = "EmulatedMkbHandler";
- static isAllowed() {
-  return getGlobalPref("mkb.enabled") && (AppInterface || !UserAgent.isMobile());
- }
- PRESET;
- VIRTUAL_GAMEPAD = {
-  id: VIRTUAL_GAMEPAD_ID,
-  index: 0,
-  connected: !1,
-  hapticActuators: null,
-  mapping: "standard",
-  axes: [0, 0, 0, 0],
-  buttons: Array(17).fill(null).map(() => ({ pressed: !1, value: 0 })),
-  timestamp: performance.now(),
-  vibrationActuator: null
- };
- nativeGetGamepads;
- xCloudGamepad = generateVirtualControllerMapping(0);
- initialized = !1;
- enabled = !1;
- mouseDataProvider;
- isPolling = !1;
- prevWheelCode = null;
- wheelStoppedTimeoutId = null;
- detectMouseStoppedTimeoutId = null;
- escKeyDownTime = -1;
- LEFT_STICK_X = [];
- LEFT_STICK_Y = [];
- RIGHT_STICK_X = [];
- RIGHT_STICK_Y = [];
- popup;
- STICK_MAP = {
-  102: [this.LEFT_STICK_X, -1],
-  103: [this.LEFT_STICK_X, 1],
-  100: [this.LEFT_STICK_Y, 1],
-  101: [this.LEFT_STICK_Y, -1],
-  202: [this.RIGHT_STICK_X, -1],
-  203: [this.RIGHT_STICK_X, 1],
-  200: [this.RIGHT_STICK_Y, 1],
-  201: [this.RIGHT_STICK_Y, -1]
- };
- constructor() {
-  super();
-  BxLogger.info(EmulatedMkbHandler.LOG_TAG, "constructor()"), this.nativeGetGamepads = window.navigator.getGamepads.bind(window.navigator), this.popup = MkbPopup.getInstance(), this.popup.attachMkbHandler(this);
- }
- isEnabled = () => this.enabled;
- patchedGetGamepads = () => {
-  let nativePads = this.nativeGetGamepads(), gamepads = nativePads ? Array.from(nativePads) : [null, null, null, null];
-  return gamepads[this.VIRTUAL_GAMEPAD.index] = this.VIRTUAL_GAMEPAD, gamepads;
- };
- getVirtualGamepad = () => this.VIRTUAL_GAMEPAD;
- updateStick(stick, x, y) {
-  let gamepad = this.xCloudGamepad;
-  if (stick === 0) gamepad.LeftThumbXAxis = x, gamepad.LeftThumbYAxis = -y, this.VIRTUAL_GAMEPAD.axes[0] = Math.max(-1, Math.min(1, x)), this.VIRTUAL_GAMEPAD.axes[1] = Math.max(-1, Math.min(1, y));
-  else gamepad.RightThumbXAxis = x, gamepad.RightThumbYAxis = -y, this.VIRTUAL_GAMEPAD.axes[2] = Math.max(-1, Math.min(1, x)), this.VIRTUAL_GAMEPAD.axes[3] = Math.max(-1, Math.min(1, y));
-  this.VIRTUAL_GAMEPAD.timestamp = performance.now(), window.BX_EXPOSED.inputChannel?.sendGamepadInput(performance.now(), [this.xCloudGamepad]);
- }
- vectorLength = (x, y) => Math.sqrt(x ** 2 + y ** 2);
- resetXcloudGamepads() {
-  let index = getStreamPref("mkb.p1.slot") - 1;
-  this.xCloudGamepad = generateVirtualControllerMapping(0, {
-   GamepadIndex: getStreamPref("localCoOp.enabled") ? index : 0,
-   Dirty: !0
-  }), this.VIRTUAL_GAMEPAD.index = index;
- }
- pressButton(buttonIndex, pressed) {
-  let xCloudKey = toXcloudGamepadKey(buttonIndex);
-  if (buttonIndex >= 100) {
-   let [valueArr] = this.STICK_MAP[buttonIndex];
-   for (let i = valueArr.length - 1;i >= 0; i--)
-    if (valueArr[i] === buttonIndex) valueArr.splice(i, 1);
-   pressed && valueArr.push(buttonIndex);
-   let value;
-   if (valueArr.length) value = this.STICK_MAP[valueArr[valueArr.length - 1]][1];
-   else value = 0;
-   if (this.xCloudGamepad[xCloudKey] = value, xCloudKey === "LeftThumbXAxis") this.VIRTUAL_GAMEPAD.axes[0] = value;
-   else if (xCloudKey === "LeftThumbYAxis") this.VIRTUAL_GAMEPAD.axes[1] = -value;
-   else if (xCloudKey === "RightThumbXAxis") this.VIRTUAL_GAMEPAD.axes[2] = value;
-   else if (xCloudKey === "RightThumbYAxis") this.VIRTUAL_GAMEPAD.axes[3] = -value;
-  } else {
-   this.xCloudGamepad[xCloudKey] = pressed ? 1 : 0;
-   let btn = this.VIRTUAL_GAMEPAD.buttons[buttonIndex];
-   if (btn) btn.pressed = pressed, btn.value = pressed ? 1 : 0;
-  }
-  this.VIRTUAL_GAMEPAD.timestamp = performance.now(), window.BX_EXPOSED.inputChannel?.sendGamepadInput(performance.now(), [this.xCloudGamepad]);
- }
- onKeyboardEvent = (e) => {
-  let isKeyDown = e.type === "keydown";
-  if (e.code === "Escape") {
-   if (e.preventDefault(), this.enabled && isKeyDown) {
-    if (this.escKeyDownTime === -1) this.escKeyDownTime = performance.now();
-    else if (performance.now() - this.escKeyDownTime >= 1000) this.stop();
-   } else this.escKeyDownTime = -1;
-   return;
-  }
-  if (!this.isPolling || !this.PRESET) return;
-  if (window.BX_STREAM_SETTINGS.xCloudPollingMode !== "none") return;
-  let buttonIndex = this.PRESET.mapping[e.code || e.key];
-  if (typeof buttonIndex > "u") return;
-  if (e.repeat) return;
-  e.preventDefault(), this.pressButton(buttonIndex, isKeyDown);
- };
- onMouseStopped = () => {
-  if (this.detectMouseStoppedTimeoutId = null, !this.PRESET) return;
-  let analog = this.PRESET.mouse["mapTo"] === 1 ? 0 : 1;
-  this.updateStick(analog, 0, 0);
- };
- handleMouseClick(data) {
-  let mouseButton;
-  if (typeof data.mouseButton < "u") mouseButton = data.mouseButton;
-  else if (typeof data.pointerButton < "u") mouseButton = PointerToMouseButton[data.pointerButton];
-  let key = {
-   code: "Mouse" + mouseButton
-  };
-  if (!this.PRESET) return;
-  let buttonIndex = this.PRESET.mapping[key.code];
-  if (typeof buttonIndex > "u") return;
-  this.pressButton(buttonIndex, data.pressed);
- }
- handleMouseMove(data) {
-  let preset = this.PRESET;
-  if (!preset) return;
-  let mouseMapTo = preset.mouse["mapTo"];
-  if (mouseMapTo === 0) return;
-  this.detectMouseStoppedTimeoutId && clearTimeout(this.detectMouseStoppedTimeoutId), this.detectMouseStoppedTimeoutId = window.setTimeout(this.onMouseStopped, 50);
-  let deadzoneCounterweight = preset.mouse["deadzoneCounterweight"], x = data.movementX * preset.mouse["sensitivityX"], y = data.movementY * preset.mouse["sensitivityY"], length = this.vectorLength(x, y);
-  if (length !== 0 && length < deadzoneCounterweight) x *= deadzoneCounterweight / length, y *= deadzoneCounterweight / length;
-  else if (length > 1.1) x *= 1.1 / length, y *= 1.1 / length;
-  let analog = mouseMapTo === 1 ? 0 : 1;
-  this.updateStick(analog, x, y);
- }
- handleMouseWheel(data) {
-  let code = "";
-  if (data.vertical < 0) code = "ScrollUp";
-  else if (data.vertical > 0) code = "ScrollDown";
-  else if (data.horizontal < 0) code = "ScrollLeft";
-  else if (data.horizontal > 0) code = "ScrollRight";
-  if (!code) return !1;
-  if (!this.PRESET) return !1;
-  let key = {
-   code
-  }, buttonIndex = this.PRESET.mapping[key.code];
-  if (typeof buttonIndex > "u") return !1;
-  if (this.prevWheelCode === null || this.prevWheelCode === key.code) this.wheelStoppedTimeoutId && clearTimeout(this.wheelStoppedTimeoutId), this.pressButton(buttonIndex, !0);
-  return this.wheelStoppedTimeoutId = window.setTimeout(() => {
-   this.prevWheelCode = null, this.pressButton(buttonIndex, !1);
-  }, 20), !0;
- }
- async toggle(force) {
-  if (!this.initialized) return;
-  if (typeof force < "u") this.enabled = force;
-  else this.enabled = !this.enabled;
-  if (this.enabled) try {
-    await document.body.requestPointerLock({ unadjustedMovement: !0 });
-   } catch (e) {
-    document.body.requestPointerLock(), console.log(e);
-   }
-  else document.pointerLockElement && document.exitPointerLock();
- }
- refreshPresetData() {
-  this.PRESET = window.BX_STREAM_SETTINGS.mkbPreset, this.resetXcloudGamepads();
- }
- waitForMouseData(showPopup) {
-  this.popup.toggleVisibility(showPopup);
- }
- onPollingModeChanged = (e) => {
-  let move = window.BX_STREAM_SETTINGS.xCloudPollingMode !== "none";
-  this.popup.moveOffscreen(move);
- };
- onDialogShown = () => {
-  document.pointerLockElement && document.exitPointerLock();
- };
- onPointerLockChange = () => {
-  if (document.pointerLockElement) this.start();
-  else this.stop();
- };
- onPointerLockError = (e) => {
-  console.log(e), this.stop();
- };
- onPointerLockRequested = () => {
-  this.start();
- };
- onPointerLockExited = () => {
-  this.mouseDataProvider?.stop();
- };
- handleEvent(event) {
-  switch (event.type) {
-   case BxEvent.POINTER_LOCK_REQUESTED:
-    this.onPointerLockRequested();
-    break;
-   case BxEvent.POINTER_LOCK_EXITED:
-    this.onPointerLockExited();
-    break;
-  }
- }
- init() {
-  if (!STATES.browser.capabilities.mkb) {
-   this.initialized = !1;
-   return;
-  }
-  if (this.initialized = !0, this.refreshPresetData(), this.enabled = !1, AppInterface) this.mouseDataProvider = new WebSocketMouseDataProvider(this);
-  else this.mouseDataProvider = new PointerLockMouseDataProvider(this);
-  if (this.mouseDataProvider.init(), window.addEventListener("keydown", this.onKeyboardEvent, !0), window.addEventListener("keyup", this.onKeyboardEvent, !0), window.addEventListener(BxEvent.XCLOUD_POLLING_MODE_CHANGED, this.onPollingModeChanged), BxEventBus.Script.on("dialog.shown", this.onDialogShown), AppInterface) window.addEventListener(BxEvent.POINTER_LOCK_REQUESTED, this), window.addEventListener(BxEvent.POINTER_LOCK_EXITED, this);
-  else document.addEventListener("pointerlockchange", this.onPointerLockChange), document.addEventListener("pointerlockerror", this.onPointerLockError);
-  if (MkbPopup.getInstance().reset(), AppInterface) {
-   let shortcutKey = StreamSettings.findKeyboardShortcut("mkb.toggle");
-   if (shortcutKey) {
-    let msg = t("press-key-to-toggle-mkb", { key: `<b>${KeyHelper.codeToKeyName(shortcutKey)}</b>` });
-    Toast.show(msg, t("native-mkb"), { html: !0 });
-   }
-   this.waitForMouseData(!1);
-  } else this.waitForMouseData(!0);
- }
- destroy() {
-  if (!this.initialized) return;
-  if (this.initialized = !1, this.isPolling = !1, this.enabled = !1, this.stop(), this.waitForMouseData(!1), document.exitPointerLock(), window.removeEventListener("keydown", this.onKeyboardEvent, !0), window.removeEventListener("keyup", this.onKeyboardEvent, !0), AppInterface) window.removeEventListener(BxEvent.POINTER_LOCK_REQUESTED, this), window.removeEventListener(BxEvent.POINTER_LOCK_EXITED, this);
-  else document.removeEventListener("pointerlockchange", this.onPointerLockChange), document.removeEventListener("pointerlockerror", this.onPointerLockError);
-  window.removeEventListener(BxEvent.XCLOUD_POLLING_MODE_CHANGED, this.onPollingModeChanged), BxEventBus.Script.off("dialog.shown", this.onDialogShown), this.mouseDataProvider?.destroy(), window.removeEventListener(BxEvent.XCLOUD_POLLING_MODE_CHANGED, this.onPollingModeChanged);
- }
- start() {
-  if (!this.enabled) this.enabled = !0, Toast.show(t("virtual-controller"), t("enabled"), { instant: !0 });
-  this.isPolling = !0, this.escKeyDownTime = -1, window.BX_EXPOSED.toggleLocalCoOp(getStreamPref("localCoOp.enabled")), this.resetXcloudGamepads(), window.navigator.getGamepads = this.patchedGetGamepads;
-  try {
-   Navigator.prototype.getGamepads = this.patchedGetGamepads;
-  } catch (e) {}
-  this.waitForMouseData(!1), this.mouseDataProvider?.start();
-  let virtualGamepad = this.getVirtualGamepad();
-  virtualGamepad.connected = !0, virtualGamepad.timestamp = performance.now(), BxEvent.dispatch(window, "gamepadconnected", {
-   gamepad: virtualGamepad
-  }), window.BX_EXPOSED.stopTakRendering = !0, Toast.show(t("virtual-controller"), t("enabled"), { instant: !0 });
- }
- stop() {
-  this.enabled = !1, this.isPolling = !1, this.escKeyDownTime = -1;
-  let virtualGamepad = this.getVirtualGamepad();
-  if (virtualGamepad.connected) {
-   this.resetXcloudGamepads(), virtualGamepad.connected = !1, virtualGamepad.timestamp = performance.now(), BxEvent.dispatch(window, "gamepaddisconnected", {
-    gamepad: virtualGamepad
-   }), window.navigator.getGamepads = this.nativeGetGamepads;
-   try {
-    Navigator.prototype.getGamepads = this.nativeGetGamepads;
-   } catch (e) {}
-  }
-  this.waitForMouseData(!0), this.mouseDataProvider?.stop();
- }
- static setupEvents() {
-  if (BxEventBus.Stream.on("state.playing", () => {
-   if (STATES.currentStream.titleInfo?.details.hasMkbSupport) NativeMkbHandler.getInstance()?.init();
-   else EmulatedMkbHandler.getInstance()?.init();
-  }), EmulatedMkbHandler.isAllowed())
-   BxEventBus.Stream.on("mkb.setting.updated", () => {
-    EmulatedMkbHandler.getInstance()?.refreshPresetData();
-   });
- }
-}
-class NavigationDialog {
- dialogManager;
- onMountedCallbacks = [];
- constructor() {
-  this.dialogManager = NavigationDialogManager.getInstance();
- }
- isCancellable() {
-  return !0;
- }
- isOverlayVisible() {
-  return !0;
- }
- show(configs = {}, clearStack = !1) {
-  if (NavigationDialogManager.getInstance().show(this, configs, clearStack), !this.getFocusedElement()) this.focusIfNeeded();
- }
- hide() {
-  NavigationDialogManager.getInstance().hide();
- }
- getFocusedElement() {
-  let $activeElement = document.activeElement;
-  if (!$activeElement) return null;
-  if (this.$container.contains($activeElement)) return $activeElement;
-  return null;
- }
- onBeforeMount(configs = {}) {}
- onMounted(configs = {}) {
-  for (let callback of this.onMountedCallbacks)
-   callback.call(this);
- }
- onBeforeUnmount() {}
- onUnmounted() {}
- handleKeyPress(key) {
-  return !1;
- }
- handleGamepad(button) {
-  return !1;
- }
-}
-class NavigationDialogManager {
- static instance;
- static getInstance = () => NavigationDialogManager.instance ?? (NavigationDialogManager.instance = new NavigationDialogManager);
- LOG_TAG = "NavigationDialogManager";
- static GAMEPAD_POLLING_INTERVAL = 50;
- static GAMEPAD_KEYS = [
-  0,
-  1,
-  2,
-  3,
-  12,
-  15,
-  13,
-  14,
-  4,
-  5,
-  6,
-  7,
-  10,
-  11,
-  8,
-  9
- ];
- static GAMEPAD_DIRECTION_MAP = {
-  12: 1,
-  13: 3,
-  14: 4,
-  15: 2,
-  100: 1,
-  101: 3,
-  102: 4,
-  103: 2
- };
- static SIBLING_PROPERTY_MAP = {
-  horizontal: {
-   4: "previousElementSibling",
-   2: "nextElementSibling"
-  },
-  vertical: {
-   1: "previousElementSibling",
-   3: "nextElementSibling"
-  }
- };
- gamepadPollingIntervalId = null;
- gamepadLastStates = [];
- gamepadHoldingIntervalId = null;
- $overlay;
- $container;
- dialog = null;
- dialogsStack = [];
- constructor() {
-  if (BxLogger.info(this.LOG_TAG, "constructor()"), this.$overlay = CE("div", { class: "bx-navigation-dialog-overlay bx-gone" }), this.$overlay.addEventListener("click", (e) => {
-   e.preventDefault(), e.stopPropagation(), this.dialog?.isCancellable() && this.hide();
-  }), this.$container = CE("div", { class: "bx-navigation-dialog bx-gone" }), window.location.hostname !== "play.xbox.com")
-   document.documentElement.appendChild(this.$overlay), document.documentElement.appendChild(this.$container);
-  window.addEventListener(BxEvent.XCLOUD_GUIDE_MENU_SHOWN, (e) => this.hide()), new MutationObserver((mutationList) => {
-   if (mutationList.length === 0 || mutationList[0].addedNodes.length === 0) return;
-   let $dialog = mutationList[0].addedNodes[0];
-   if (!$dialog || !($dialog instanceof HTMLElement)) return;
-   calculateSelectBoxes($dialog);
-  }).observe(this.$container, { childList: !0 });
- }
- updateActiveInput(input) {
-  document.documentElement.dataset.activeInput = input;
- }
- handleEvent(event) {
-  switch (event.type) {
-   case "keydown":
-    this.updateActiveInput("keyboard");
-    let $target = event.target, keyboardEvent = event, keyCode = keyboardEvent.code || keyboardEvent.key, handled = this.dialog?.handleKeyPress(keyCode);
-    if (handled) {
-     event.preventDefault(), event.stopPropagation();
-     return;
-    }
-    if (keyCode === "ArrowUp" || keyCode === "ArrowDown") handled = !0, this.focusDirection(keyCode === "ArrowUp" ? 1 : 3);
-    else if (keyCode === "ArrowLeft" || keyCode === "ArrowRight") {
-     if (!($target instanceof HTMLInputElement && ($target.type === "text" || $target.type === "range"))) handled = !0, this.focusDirection(keyCode === "ArrowLeft" ? 4 : 2);
-    } else if (keyCode === "Enter" || keyCode === "NumpadEnter" || keyCode === "Space") {
-     if (!($target instanceof HTMLInputElement && $target.type === "text")) handled = !0, $target.dispatchEvent(new MouseEvent("click", { bubbles: !0 }));
-    } else if (keyCode === "Escape") handled = !0, this.hide();
-    if (handled) event.preventDefault(), event.stopPropagation();
-    break;
-  }
- }
- isShowing() {
-  return this.$container && !this.$container.classList.contains("bx-gone");
- }
- pollGamepad = () => {
-  let gamepads = PlayXboxGamepad.getRawGamepads();
-  for (let gamepad of gamepads) {
-   if (!gamepad || !gamepad.connected) continue;
-   if (gamepad.id === VIRTUAL_GAMEPAD_ID) continue;
-   let { axes, buttons } = gamepad, releasedButton = null, heldButton = null, lastState = this.gamepadLastStates[gamepad.index], lastTimestamp, lastKey, lastKeyPressed;
-   if (lastState) [lastTimestamp, lastKey, lastKeyPressed] = lastState;
-   if (lastTimestamp && lastTimestamp === gamepad.timestamp) continue;
-   for (let key of NavigationDialogManager.GAMEPAD_KEYS) {
-    let btn = buttons[key];
-    if (!btn) continue;
-    if (lastKey === key && !btn.pressed) {
-     releasedButton = key;
-     break;
-    } else if (btn.pressed) {
-     heldButton = key;
-     break;
-    }
-   }
-   if (heldButton === null && releasedButton === null && axes && axes.length >= 2) {
-    if (lastKey) {
-     let releasedHorizontal = Math.abs(axes[0]) < 0.1 && (lastKey === 102 || lastKey === 103), releasedVertical = Math.abs(axes[1]) < 0.1 && (lastKey === 100 || lastKey === 101);
-     if (releasedHorizontal || releasedVertical) releasedButton = lastKey;
-     else heldButton = lastKey;
-    } else if (axes[0] < -0.5) heldButton = 102;
-    else if (axes[0] > 0.5) heldButton = 103;
-    else if (axes[1] < -0.5) heldButton = 100;
-    else if (axes[1] > 0.5) heldButton = 101;
-   }
-   if (heldButton !== null) {
-    if (this.gamepadLastStates[gamepad.index] = [gamepad.timestamp, heldButton, !1], this.clearGamepadHoldingInterval(), NavigationDialogManager.GAMEPAD_DIRECTION_MAP[heldButton]) this.gamepadHoldingIntervalId = window.setInterval(() => {
-      let lastState2 = this.gamepadLastStates[gamepad.index];
-      if (lastState2) {
-       if ([lastTimestamp, lastKey, lastKeyPressed] = lastState2, lastKey === heldButton) {
-        this.handleGamepad(gamepad, heldButton);
-        return;
-       }
-      }
-      this.clearGamepadHoldingInterval();
-     }, 100);
-    continue;
-   }
-   if (releasedButton === null) {
-    this.clearGamepadHoldingInterval();
-    continue;
-   }
-   if (this.gamepadLastStates[gamepad.index] = null, lastKeyPressed) return;
-   if (this.updateActiveInput("gamepad"), this.handleGamepad(gamepad, releasedButton)) return;
-   if (releasedButton === 0) {
-    document.activeElement?.dispatchEvent(new MouseEvent("click", { bubbles: !0 }));
-    return;
-   } else if (releasedButton === 1) {
-    this.hide();
-    return;
-   }
-  }
- };
- handleGamepad(gamepad, key) {
-  let handled = this.dialog?.handleGamepad(key);
-  if (handled) return !0;
-  let direction = NavigationDialogManager.GAMEPAD_DIRECTION_MAP[key];
-  if (!direction) return !1;
-  if (document.activeElement instanceof HTMLInputElement && document.activeElement.type === "range") {
-   let $range = document.activeElement;
-   if (direction === 4 || direction === 2) {
-    let $numberStepper = $range.closest(".bx-number-stepper");
-    if ($numberStepper) BxNumberStepper.change.call($numberStepper, direction === 4 ? "dec" : "inc");
-    else $range.value = (parseInt($range.value) + parseInt($range.step) * (direction === 4 ? -1 : 1)).toString(), $range.dispatchEvent(new InputEvent("input"));
-    handled = !0;
-   }
-  }
-  if (!handled) this.focusDirection(direction);
-  return this.gamepadLastStates[gamepad.index] && (this.gamepadLastStates[gamepad.index][2] = !0), !0;
- }
- clearGamepadHoldingInterval() {
-  this.gamepadHoldingIntervalId && window.clearInterval(this.gamepadHoldingIntervalId), this.gamepadHoldingIntervalId = null;
- }
- show(dialog, configs = {}, clearStack = !1) {
-  this.clearGamepadHoldingInterval(), BxEventBus.Script.emit("dialog.shown", {}), window.BX_EXPOSED.disableGamepadPolling = !0, document.body.classList.add("bx-no-scroll"), this.unmountCurrentDialog();
-  let host = document.fullscreenElement || document.documentElement;
-  if (this.$overlay.parentElement !== host) host.appendChild(this.$overlay);
-  if (this.$container.parentElement !== host) host.appendChild(this.$container);
-  this.dialogsStack.push(dialog), this.dialog = dialog, dialog.onBeforeMount(configs), this.$container.appendChild(dialog.getContent()), dialog.onMounted(configs), this.$overlay.classList.remove("bx-gone"), this.$overlay.classList.toggle("bx-invisible", !dialog.isOverlayVisible()), this.$container.classList.remove("bx-gone"), this.$container.addEventListener("keydown", this), this.startGamepadPolling();
- }
- hide() {
-  if (this.clearGamepadHoldingInterval(), this.stopGamepadPolling(), !this.isShowing()) return;
-  if (document.body.classList.remove("bx-no-scroll"), BxEventBus.Script.emit("dialog.dismissed", {}), this.$overlay.classList.add("bx-gone"), this.$overlay.classList.remove("bx-invisible"), this.$container.classList.add("bx-gone"), this.$container.removeEventListener("keydown", this), this.stopGamepadPolling(), this.dialog) {
-   let dialogIndex = this.dialogsStack.indexOf(this.dialog);
-   if (dialogIndex > -1) this.dialogsStack = this.dialogsStack.slice(0, dialogIndex);
-  }
-  if (this.unmountCurrentDialog(), window.BX_EXPOSED.disableGamepadPolling = !1, this.dialogsStack.length) this.dialogsStack[this.dialogsStack.length - 1].show();
-  else if (window.location.hostname === "play.xbox.com" && STATES.isPlaying) window.setTimeout(() => {
-    if (this.isShowing()) return;
-    let $streamTarget = document.querySelector('[data-testid="media-container"] video, [data-testid="media-container"], #game-stream video, #game-stream');
-    if ($streamTarget) {
-     if ($streamTarget.tabIndex < 0) $streamTarget.tabIndex = -1;
-     $streamTarget.focus({ preventScroll: !0 });
-    }
-   }, 60);
- }
- focus($elm) {
-  if (!$elm) return !1;
-  if ($elm.nearby && $elm.nearby.focus) if ($elm.nearby.focus instanceof HTMLElement) return this.focus($elm.nearby.focus);
-   else return $elm.nearby.focus();
-  return $elm.focus(), $elm === document.activeElement;
- }
- getOrientation($elm) {
-  let nearby = $elm.nearby || {};
-  if (nearby.selfOrientation) return nearby.selfOrientation;
-  let orientation, $current = $elm.parentElement;
-  while ($current !== this.$container) {
-   let tmp = $current.nearby?.orientation;
-   if ($current.nearby && tmp) {
-    orientation = tmp;
-    break;
-   }
-   $current = $current.parentElement;
-  }
-  return orientation = orientation || "vertical", setNearby($elm, {
-   selfOrientation: orientation
-  }), orientation;
- }
- findNextTarget($focusing, direction, checkParent = !1, checked = []) {
-  if (!$focusing || $focusing === this.$container) return null;
-  if (checked.includes($focusing)) return null;
-  checked.push($focusing);
-  let $target = $focusing, $parent = $target.parentElement, nearby = $target.nearby || {}, orientation = this.getOrientation($target);
-  if (nearby[1] && direction === 1) return nearby[1];
-  else if (nearby[3] && direction === 3) return nearby[3];
-  else if (nearby[4] && direction === 4) return nearby[4];
-  else if (nearby[2] && direction === 2) return nearby[2];
-  let siblingProperty = NavigationDialogManager.SIBLING_PROPERTY_MAP[orientation][direction];
-  if (siblingProperty) {
-   let $sibling = $target;
-   while ($sibling[siblingProperty]) {
-    $sibling = $sibling[siblingProperty];
-    let $focusable = this.findFocusableElement($sibling, direction);
-    if ($focusable) return $focusable;
-   }
-  }
-  if (nearby.loop) {
-   if (nearby.loop(direction)) return null;
-  }
-  if (checkParent) return this.findNextTarget($parent, direction, checkParent, checked);
-  return null;
- }
- findFocusableElement($elm, direction) {
-  if (!$elm) return null;
-  if (!!$elm.disabled) return null;
-  if (!isElementVisible($elm)) return null;
-  if ($elm.tabIndex > -1) return $elm;
-  let focus = $elm.nearby?.focus;
-  if (focus) {
-   if (focus instanceof HTMLElement) return this.findFocusableElement(focus, direction);
-   else if (typeof focus === "function") {
-    if (focus()) return document.activeElement;
-   }
-  }
-  let children = Array.from($elm.children), orientation = $elm.nearby?.orientation || "vertical";
-  if (orientation === "horizontal" || orientation === "vertical" && direction === 1) children.reverse();
-  for (let $child of children) {
-   if (!$child || !($child instanceof HTMLElement)) return null;
-   let $target = this.findFocusableElement($child, direction);
-   if ($target) return $target;
-  }
-  return null;
- }
- startGamepadPolling() {
-  if (this.stopGamepadPolling(), window.location.hostname === "play.xbox.com") PlayXboxGamepad.setDialogNeutralMode(!0);
-  this.gamepadPollingIntervalId = window.setInterval(this.pollGamepad, NavigationDialogManager.GAMEPAD_POLLING_INTERVAL);
- }
- stopGamepadPolling() {
-  if (this.gamepadLastStates = [], this.gamepadPollingIntervalId && window.clearInterval(this.gamepadPollingIntervalId), this.gamepadPollingIntervalId = null, window.location.hostname === "play.xbox.com") PlayXboxGamepad.setDialogNeutralMode(!1);
- }
- focusDirection(direction) {
-  let dialog = this.dialog;
-  if (!dialog) return;
-  let $focusing = dialog.getFocusedElement();
-  if (!$focusing || !this.findFocusableElement($focusing, direction)) return dialog.focusIfNeeded(), null;
-  let $target = this.findNextTarget($focusing, direction, !0);
-  this.focus($target);
- }
- unmountCurrentDialog() {
-  let dialog = this.dialog;
-  dialog && dialog.onBeforeUnmount(), this.$container.firstChild?.remove(), dialog && dialog.onUnmounted(), this.dialog = null;
- }
-}
-class StreamUiShortcut {
- static showHideStreamMenu() {
-  if (window.BX_EXPOSED.showStreamMenu) {
-   window.BX_EXPOSED.showStreamMenu();
-   return;
-  }
-  let dialogManager = NavigationDialogManager.getInstance();
-  if (dialogManager.isShowing()) dialogManager.hide();
-  else SettingsDialog.getInstance().show();
- }
-}
 class ScreenshotManager {
  static instance;
  static getInstance = () => ScreenshotManager.instance ?? (ScreenshotManager.instance = new ScreenshotManager);
@@ -9091,7 +9085,12 @@ class ShortcutHandler {
     MicrophoneShortcut.toggle();
     break;
    case "stream.menu.show":
-    StreamUiShortcut.showHideStreamMenu();
+    if (window.BX_EXPOSED.showStreamMenu) StreamUiShortcut.showHideStreamMenu();
+    else {
+     let settingsDialog = SettingsDialog.getInstance();
+     if (settingsDialog.dialogManager.isShowing()) settingsDialog.hide();
+     else settingsDialog.show();
+    }
     break;
    case "stream.sound.toggle":
     SoundShortcut.muteUnmute();
@@ -11850,7 +11849,12 @@ function main() {
   let customList = getGlobalPref("nativeMkb.forcedGames");
   BX_FLAGS.ForceNativeMkbTitles.push(...customList);
  }
- if (StreamSettings.setup(), IS_NEW_SITE) PlayXboxGamepad.install();
+ if (StreamSettings.setup(), IS_NEW_SITE) PlayXboxGamepad.install({
+   isGuideOpen: () => GuideMenu.getInstance().isGuideMenuOpen(),
+   refreshControllerSettings: () => StreamSettings.refreshControllerSettings(),
+   handleShortcut: (gp) => ControllerShortcut.handle(gp),
+   resetShortcut: (idx) => ControllerShortcut.reset(idx)
+  });
  try {
   patchRtcPeerConnection();
  } catch (e) {
