@@ -52,6 +52,21 @@ export function setCodecPreferences(sdp: string, preferredCodec: string) {
 }
 
 
+export function patchSdpBitrateHints(sdp: string, maxKbps: number) {
+    // Inject Chromium WebRTC bitrate hints on H.264 fmtp lines so the stream starts
+    // and stays as close as possible to the plan's maximum bitrate ceiling.
+    const startKbps = Math.min(maxKbps, 18000);
+    const minKbps = Math.min(maxKbps, 8000);
+
+    return sdp.replace(/^(a=fmtp:\d+ [^\r\n]*profile-level-id=[^\r\n]*)/gm, (line) => {
+        if (line.includes('x-google-max-bitrate')) {
+            return line;
+        }
+        return `${line};x-google-start-bitrate=${startKbps};x-google-min-bitrate=${minKbps};x-google-max-bitrate=${maxKbps}`;
+    });
+}
+
+
 export function patchSdpBitrate(sdp: string, video?: number, audio?: number) {
     const lines = sdp.split('\r\n');
 

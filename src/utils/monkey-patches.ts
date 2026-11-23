@@ -1,7 +1,7 @@
 import { BxEvent } from "@utils/bx-event";
 import { STATES } from "@utils/global";
 import { BxLogger } from "@utils/bx-logger";
-import { patchSdpBitrate, setCodecPreferences } from "./sdp";
+import { patchSdpBitrate, patchSdpBitrateHints, setCodecPreferences } from "./sdp";
 import { StreamPlayerManager } from "@/modules/stream-player-manager";
 import { GlobalPref, StreamPref } from "@/enums/pref-keys";
 import { CodecProfile } from "@/enums/pref-values";
@@ -92,27 +92,32 @@ export function patchRtcPeerConnection() {
     const maxVideoBitrate = getGlobalPref(GlobalPref.STREAM_MAX_VIDEO_BITRATE);
     const codec = getGlobalPref(GlobalPref.STREAM_CODEC_PROFILE);
 
-    if (codec !== CodecProfile.DEFAULT || maxVideoBitrate < maxVideoBitrateDef.max) {
-        const nativeSetLocalDescription = RTCPeerConnection.prototype.setLocalDescription;
-        RTCPeerConnection.prototype.setLocalDescription = function(description?: RTCLocalSessionDescriptionInit): Promise<void> {
-            // Set preferred codec profile
-            if (codec !== CodecProfile.DEFAULT) {
-                arguments[0].sdp = setCodecPreferences(arguments[0].sdp, codec);
-            }
-
-            // Set maximum bitrate
-            try {
-                if (maxVideoBitrate < maxVideoBitrateDef.max && description) {
-                    arguments[0].sdp = patchSdpBitrate(arguments[0].sdp, Math.round(maxVideoBitrate / 1000));
+    const nativeSetLocalDescription = RTCPeerConnection.prototype.setLocalDescription;
+    RTCPeerConnection.prototype.setLocalDescription = function(description?: RTCLocalSessionDescriptionInit): Promise<void> {
+        try {
+            if (description && arguments[0]?.sdp) {
+                // Set preferred codec profile
+                if (codec !== CodecProfile.DEFAULT) {
+                    arguments[0].sdp = setCodecPreferences(arguments[0].sdp, codec);
                 }
-            } catch (e) {
-                BxLogger.error('setLocalDescription', e);
-            }
 
-            // @ts-ignore
-            return nativeSetLocalDescription.apply(this, arguments);
-        };
-    }
+                // Set maximum bitrate or push Chromium WebRTC bitrate hints toward the server's plan ceiling
+                const hasCustomCap = maxVideoBitrate > 0 && maxVideoBitrate < maxVideoBitrateDef.max;
+                if (hasCustomCap) {
+                    const kbps = Math.round(maxVideoBitrate / 1000);
+                    arguments[0].sdp = patchSdpBitrate(arguments[0].sdp, kbps);
+                    arguments[0].sdp = patchSdpBitrateHints(arguments[0].sdp, kbps);
+                } else {
+                    arguments[0].sdp = patchSdpBitrateHints(arguments[0].sdp, 30000);
+                }
+            }
+        } catch (e) {
+            BxLogger.error('setLocalDescription', e);
+        }
+
+        // @ts-ignore
+        return nativeSetLocalDescription.apply(this, arguments);
+    };
 
     const OrgRTCPeerConnection = window.RTCPeerConnection;
     // @ts-ignore

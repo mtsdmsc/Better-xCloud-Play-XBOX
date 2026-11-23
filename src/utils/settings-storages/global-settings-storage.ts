@@ -308,7 +308,7 @@ export class GlobalSettingsStorage extends BaseSettingsStorage<GlobalPref> {
             note: '⚠️ ' + t('unexpected-behavior'),
             default: 0,
             min: 1024 * 100,
-            max: 15 * 1024 * 1000,
+            max: 30 * 1024 * 1000,
             transformValue: {
                 get(value) {
                     return value === 0 ? this.max : value;
@@ -319,7 +319,7 @@ export class GlobalSettingsStorage extends BaseSettingsStorage<GlobalPref> {
                 },
             },
             params: {
-                steps: 100 * 1024,
+                steps: 500 * 1024,
                 exactTicks: 5 * 1024 * 1000,
                 customTextValue: (value: any, min, max) => {
                     value = parseInt(value);

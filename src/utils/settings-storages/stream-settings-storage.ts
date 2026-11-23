@@ -200,7 +200,7 @@ export class StreamSettingsStorage extends BaseSettingsStorage<StreamPref> {
                 [VideoPowerPreference.HIGH_PERFORMANCE]: t('high-performance'),
             },
             suggest: {
-                highest: 'low-power',
+                highest: VideoPowerPreference.HIGH_PERFORMANCE,
             },
         },
         [StreamPref.VIDEO_MAX_FPS]: {
@@ -231,7 +231,7 @@ export class StreamSettingsStorage extends BaseSettingsStorage<StreamPref> {
             },
             suggest: {
                 lowest: 0,
-                highest: 2,
+                highest: 3,
             },
         },
         [StreamPref.VIDEO_RATIO]: {

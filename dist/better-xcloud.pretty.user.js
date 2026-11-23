@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Better xCloud (Desktop - play.xbox.com)
 // @namespace    https://github.com/mtsdmsc/Better-xCloud-Play-XBOX
-// @version      1.3.1
+// @version      1.3.2
 // @description  Improve Xbox Cloud Gaming (xCloud) on Desktop browsers at play.xbox.com and xbox.com/play (Port by Mateus Damasceno / Original by redphx)
 // @author       redphx, Mateus Damasceno (mtsdmsc)
 // @license      MIT
@@ -199,7 +199,7 @@ class UserAgent {
   } catch (e) {}
  }
 }
-var SCRIPT_VERSION = "1.3.1", SCRIPT_VARIANT = "full", AppInterface = window.AppInterface;
+var SCRIPT_VERSION = "1.3.2", SCRIPT_VARIANT = "full", AppInterface = window.AppInterface;
 UserAgent.init();
 var userAgent = window.navigator.userAgent.toLowerCase(), isTv = userAgent.includes("smart-tv") || userAgent.includes("smarttv") || /\baft.*\b/.test(userAgent), isVr = window.navigator.userAgent.includes("VR") && window.navigator.userAgent.includes("OculusBrowser"), browserHasTouchSupport = "ontouchstart" in window || navigator.maxTouchPoints > 0, userAgentHasTouchSupport = !isTv && !isVr && browserHasTouchSupport, STATES = {
  supportedRegion: !0,
@@ -2012,7 +2012,7 @@ class GlobalSettingsStorage extends BaseSettingsStorage {
    note: "⚠️ " + t("unexpected-behavior"),
    default: 0,
    min: 102400,
-   max: 15360000,
+   max: 30720000,
    transformValue: {
     get(value) {
      return value === 0 ? this.max : value;
@@ -2022,7 +2022,7 @@ class GlobalSettingsStorage extends BaseSettingsStorage {
     }
    },
    params: {
-    steps: 102400,
+    steps: 512000,
     exactTicks: 5120000,
     customTextValue: (value, min, max) => {
      if (value = parseInt(value), value === max) return t("unlimited");
@@ -2922,7 +2922,7 @@ class StreamSettingsStorage extends BaseSettingsStorage {
     "high-performance": t("high-performance")
    },
    suggest: {
-    highest: "low-power"
+    highest: "high-performance"
    }
   },
   "video.maxFps": {
@@ -2947,7 +2947,7 @@ class StreamSettingsStorage extends BaseSettingsStorage {
    },
    suggest: {
     lowest: 0,
-    highest: 2
+    highest: 3
    }
   },
   "video.ratio": {
@@ -10286,6 +10286,13 @@ function setCodecPreferences(sdp, preferredCodec) {
  return lines.join(`\r
 `);
 }
+function patchSdpBitrateHints(sdp, maxKbps) {
+ let startKbps = Math.min(maxKbps, 18000), minKbps = Math.min(maxKbps, 8000);
+ return sdp.replace(/^(a=fmtp:\d+ [^\r\n]*profile-level-id=[^\r\n]*)/gm, (line) => {
+  if (line.includes("x-google-max-bitrate")) return line;
+  return `${line};x-google-start-bitrate=${startKbps};x-google-min-bitrate=${minKbps};x-google-max-bitrate=${maxKbps}`;
+ });
+}
 function patchSdpBitrate(sdp, video, audio) {
  let lines = sdp.split(`\r
 `), mediaSet = new Set;
@@ -10547,19 +10554,21 @@ function patchRtcPeerConnection() {
   let dataChannel = nativeCreateDataChannel.apply(this, arguments);
   return BxEventBus.Stream.emit("dataChannelCreated", { dataChannel }), dataChannel;
  };
- let maxVideoBitrateDef = getGlobalPrefDefinition("stream.video.maxBitrate"), maxVideoBitrate = getGlobalPref("stream.video.maxBitrate"), codec = getGlobalPref("stream.video.codecProfile");
- if (codec !== "default" || maxVideoBitrate < maxVideoBitrateDef.max) {
-  let nativeSetLocalDescription = RTCPeerConnection.prototype.setLocalDescription;
-  RTCPeerConnection.prototype.setLocalDescription = function(description) {
-   if (codec !== "default") arguments[0].sdp = setCodecPreferences(arguments[0].sdp, codec);
-   try {
-    if (maxVideoBitrate < maxVideoBitrateDef.max && description) arguments[0].sdp = patchSdpBitrate(arguments[0].sdp, Math.round(maxVideoBitrate / 1000));
-   } catch (e) {
-    BxLogger.error("setLocalDescription", e);
+ let maxVideoBitrateDef = getGlobalPrefDefinition("stream.video.maxBitrate"), maxVideoBitrate = getGlobalPref("stream.video.maxBitrate"), codec = getGlobalPref("stream.video.codecProfile"), nativeSetLocalDescription = RTCPeerConnection.prototype.setLocalDescription;
+ RTCPeerConnection.prototype.setLocalDescription = function(description) {
+  try {
+   if (description && arguments[0]?.sdp) {
+    if (codec !== "default") arguments[0].sdp = setCodecPreferences(arguments[0].sdp, codec);
+    if (maxVideoBitrate > 0 && maxVideoBitrate < maxVideoBitrateDef.max) {
+     let kbps = Math.round(maxVideoBitrate / 1000);
+     arguments[0].sdp = patchSdpBitrate(arguments[0].sdp, kbps), arguments[0].sdp = patchSdpBitrateHints(arguments[0].sdp, kbps);
+    } else arguments[0].sdp = patchSdpBitrateHints(arguments[0].sdp, 30000);
    }
-   return nativeSetLocalDescription.apply(this, arguments);
-  };
- }
+  } catch (e) {
+   BxLogger.error("setLocalDescription", e);
+  }
+  return nativeSetLocalDescription.apply(this, arguments);
+ };
  let OrgRTCPeerConnection = window.RTCPeerConnection;
  window.RTCPeerConnection = function() {
   let conn = new OrgRTCPeerConnection;
