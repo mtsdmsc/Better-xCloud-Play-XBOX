@@ -148,18 +148,57 @@ export class XcloudInterceptor {
         }
         StreamBadges.getInstance().setRegion(badgeRegion);
 
-        const clone = (request as Request).clone();
-        const body = await clone.json();
-
+        let body: any = null;
         const headers: { [index: string]: string } = {};
-        for (const pair of (clone.headers as any).entries()) {
-            headers[pair[0]] = pair[1];
+
+        try {
+            if (request instanceof Request) {
+                const clone = request.clone();
+                body = await clone.json();
+                for (const pair of (clone.headers as any).entries()) {
+                    headers[pair[0]] = pair[1];
+                }
+            } else if (init) {
+                if (typeof init.body === 'string') {
+                    body = JSON.parse(init.body);
+                }
+                if (init.headers) {
+                    const h = new Headers(init.headers);
+                    h.forEach((value, key) => {
+                        headers[key] = value;
+                    });
+                }
+            }
+        } catch (e) {
+            return NATIVE_FETCH(request, init);
         }
+
+        if (!body) {
+            return NATIVE_FETCH(request, init);
+        }
+
+        body.settings = body.settings || {};
 
         // Force stream's resolution
         if (PREF_STREAM_TARGET_RESOLUTION !== 'auto') {
             const osName = getOsNameFromResolution(PREF_STREAM_TARGET_RESOLUTION);
-            headers['x-ms-device-info'] = JSON.stringify(generateMsDeviceInfo(osName));
+            // Preserve play.xbox.com's modern clientAppVersion/clientSdkVersion if x-ms-device-info already exists
+            let deviceInfo: any = null;
+            const existingHeaderKey = Object.keys(headers).find(k => k.toLowerCase() === 'x-ms-device-info');
+            if (existingHeaderKey && headers[existingHeaderKey]) {
+                try {
+                    deviceInfo = JSON.parse(headers[existingHeaderKey]);
+                    deviceInfo.dev = deviceInfo.dev || {};
+                    deviceInfo.dev.os = Object.assign({}, deviceInfo.dev.os, { name: osName, platform: 'desktop' });
+                    deviceInfo.dev.displayInfo = Object.assign({}, deviceInfo.dev.displayInfo, {
+                        dimensions: { widthInPixels: 4096, heightInPixels: 2160 },
+                        pixelDensity: { dpiX: 1, dpiY: 1 },
+                    });
+                } catch (e) {
+                    deviceInfo = null;
+                }
+            }
+            headers[existingHeaderKey || 'x-ms-device-info'] = JSON.stringify(deviceInfo || generateMsDeviceInfo(osName));
             body.settings.osName = osName;
         }
 
@@ -168,12 +207,18 @@ export class XcloudInterceptor {
             body.settings.locale = PREF_STREAM_PREFERRED_LOCALE;
         }
 
-        const newRequest = new Request(request, {
+        if (request instanceof Request) {
+            const newRequest = new Request(request, {
+                body: JSON.stringify(body),
+                headers: headers,
+            });
+            return NATIVE_FETCH(newRequest);
+        }
+
+        return NATIVE_FETCH(request, Object.assign({}, init, {
             body: JSON.stringify(body),
             headers: headers,
-        });
-
-        return NATIVE_FETCH(newRequest);
+        }));
     }
 
     private static async handleWaitTime(request: RequestInfo | URL, init?: RequestInit) {
@@ -268,7 +313,7 @@ export class XcloudInterceptor {
         // Server list
         if (url.endsWith('/v2/login/user')) {
             return XcloudInterceptor.handleLogin(request, init);
-        } else if (url.endsWith('/sessions/cloud/play')) {  // Get session
+        } else if (url.includes('/sessions/cloud/play')) {  // Get session
             return XcloudInterceptor.handlePlay(request, init);
         } else if (url.includes('xboxlive.com') && url.includes('/waittime/')) {
             return XcloudInterceptor.handleWaitTime(request, init);

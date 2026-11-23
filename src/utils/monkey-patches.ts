@@ -64,6 +64,32 @@ export function patchVideoApi() {
 
         return nativePlay.apply(this);
     };
+
+    // Native "Prevent resolution drops" on play.xbox.com: clamp reported video frame decode/processing
+    // durations so xCloud's client telemetry doesn't ask the server to downscale 1080p -> 720p.
+    if (getGlobalPref(GlobalPref.STREAM_PREVENT_RESOLUTION_DROPS) && 'requestVideoFrameCallback' in HTMLVideoElement.prototype) {
+        const nativeRvfc = HTMLVideoElement.prototype.requestVideoFrameCallback;
+        HTMLVideoElement.prototype.requestVideoFrameCallback = function(callback: VideoFrameRequestCallback): number {
+            const wrapped: VideoFrameRequestCallback = (now, metadata) => {
+                if (metadata) {
+                    try {
+                        const clamped: any = Object.assign({}, metadata);
+                        if (typeof clamped.processingDuration === 'number' && clamped.processingDuration > 0.004) {
+                            clamped.processingDuration = 0.004;
+                        }
+                        if (typeof clamped.receiveTime === 'number' && typeof clamped.expectedDisplayTime === 'number') {
+                            if (clamped.expectedDisplayTime - clamped.receiveTime > 10) {
+                                clamped.expectedDisplayTime = clamped.receiveTime + 10;
+                            }
+                        }
+                        return callback(now, clamped);
+                    } catch (e) {}
+                }
+                return callback(now, metadata);
+            };
+            return nativeRvfc.call(this, wrapped);
+        };
+    }
 }
 
 
@@ -146,21 +172,6 @@ export function patchRtcPeerConnection() {
     window.RTCPeerConnection = function() {
         const conn = new OrgRTCPeerConnection();
         STATES.currentStream.peerConnection = conn;
-
-        // Reduce WebRTC video/audio playout latency on Chromium/Edge
-        conn.addEventListener('track', (e: RTCTrackEvent) => {
-            try {
-                const receiver = e.receiver as any;
-                if (receiver) {
-                    if ('jitterBufferTarget' in receiver) {
-                        receiver.jitterBufferTarget = 0;
-                    }
-                    if ('playoutDelayHint' in receiver) {
-                        receiver.playoutDelayHint = 0;
-                    }
-                }
-            } catch (err) {}
-        });
 
         conn.addEventListener('connectionstatechange', e => {
             BxLogger.info('connectionstatechange', conn.connectionState);

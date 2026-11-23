@@ -3,6 +3,7 @@ import { createButton, ButtonStyle, CE } from "@/utils/html";
 import { t } from "@/utils/translation";
 import { SettingsDialog } from "./dialog/settings-dialog";
 import { NavigationDialogManager } from "./dialog/navigation-dialog";
+import { PlayXboxGamepad } from "@/utils/play-xbox-gamepad";
 import { BxIcon } from "@/utils/bx-icon";
 import { BxEventBus } from "@/utils/bx-event-bus";
 import { getGlobalPref } from "@/utils/pref-utils";
@@ -22,7 +23,6 @@ export class GuideMenu {
     private observer: MutationObserver | null = null;
     private gamepadHomePrevPressed = false;
     private guideOpenedAt = 0;
-    private nativeGetGamepads: Navigator['getGamepads'] = window.navigator.getGamepads.bind(window.navigator);
 
     isGuideMenuOpen(): boolean {
         return !!document.querySelector('#guide-tab-bar, #guide-jump-landing-page');
@@ -101,13 +101,15 @@ export class GuideMenu {
             subtree: true,
         });
 
+        PlayXboxGamepad.setGuideOpenChecker(() => this.isGuideMenuOpen());
+
         // Poll physical gamepad Xbox/Home button (button[16]) to close the Guide menu if play.xbox.com doesn't close it natively
         window.setInterval(() => {
             if (NavigationDialogManager.getInstance().isShowing()) {
                 this.gamepadHomePrevPressed = false;
                 return;
             }
-            const gamepads = this.nativeGetGamepads ? this.nativeGetGamepads() : [];
+            const gamepads = PlayXboxGamepad.getRawGamepads();
             let homePressed = false;
             for (const gp of gamepads) {
                 if (gp && gp.connected && gp.buttons[16]?.pressed) {

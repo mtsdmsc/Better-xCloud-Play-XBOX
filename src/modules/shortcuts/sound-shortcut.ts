@@ -14,8 +14,23 @@ export enum SpeakerState {
 
 export class SoundShortcut {
     static adjustGainNodeVolume(amount: number): number {
-        if (!getGlobalPref(GlobalPref.AUDIO_VOLUME_CONTROL_ENABLED)) {
-            return 0;
+        if (!getGlobalPref(GlobalPref.AUDIO_VOLUME_CONTROL_ENABLED) || !STATES.currentStream.audioGainNode) {
+            // Fallback for play.xbox.com (or when AudioContext gain node is off): adjust media element volume directly
+            const $media = document.querySelector<HTMLMediaElement>('div[data-testid=media-container] audio')
+                ?? document.querySelector<HTMLMediaElement>('div[data-testid=media-container] video')
+                ?? document.querySelector<HTMLMediaElement>('#game-stream audio, #game-stream video');
+            if (!$media) {
+                return 0;
+            }
+            const currentPct = Math.round(($media.muted ? 0 : $media.volume) * 100);
+            const nextPct = Math.max(0, Math.min(100, currentPct + amount));
+            $media.muted = nextPct === 0;
+            $media.volume = nextPct / 100;
+            Toast.show(`${t('stream')} ❯ ${t('volume')}`, nextPct === 0 ? t('muted') : nextPct + '%', { instant: true });
+            BxEventBus.Stream.emit('speaker.state.changed', {
+                state: nextPct === 0 ? SpeakerState.MUTED : SpeakerState.ENABLED,
+            });
+            return nextPct;
         }
 
         const currentValue = getStreamPref(StreamPref.AUDIO_VOLUME);

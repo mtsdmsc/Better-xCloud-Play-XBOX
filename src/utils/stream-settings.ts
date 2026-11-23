@@ -14,6 +14,7 @@ import { KeyHelper } from "@/modules/mkb/key-helper";
 import { BxEventBus } from "./bx-event-bus";
 import { ControllerCustomizationsTable } from "./local-db/controller-customizations-table";
 import { getStreamPref, STORAGE } from "@/utils/pref-utils";
+import { PlayXboxGamepad } from "./play-xbox-gamepad";
 
 
 export type StreamSettingsData = {
@@ -57,7 +58,9 @@ export class StreamSettings {
         const shortcutsTable = ControllerShortcutsTable.getInstance();
         const mappingTable = ControllerCustomizationsTable.getInstance();
 
-        const gamepads = window.navigator.getGamepads();
+        const gamepads = window.location.hostname === 'play.xbox.com'
+            ? PlayXboxGamepad.getRawGamepads()
+            : window.navigator.getGamepads();
         for (const gamepad of gamepads) {
             if (!gamepad?.connected) {
                 continue;
