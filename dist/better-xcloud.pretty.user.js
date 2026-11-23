@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Better xCloud (Desktop - play.xbox.com)
 // @namespace    https://github.com/mtsdmsc/Better-xCloud-Play-XBOX
-// @version      1.3.3
+// @version      1.3.4
 // @description  Improve Xbox Cloud Gaming (xCloud) on Desktop browsers at play.xbox.com and xbox.com/play (Port by Mateus Damasceno / Original by redphx)
 // @author       redphx, Mateus Damasceno (mtsdmsc)
 // @license      MIT
@@ -199,7 +199,7 @@ class UserAgent {
   } catch (e) {}
  }
 }
-var SCRIPT_VERSION = "1.3.3", SCRIPT_VARIANT = "full", AppInterface = window.AppInterface;
+var SCRIPT_VERSION = "1.3.4", SCRIPT_VARIANT = "full", AppInterface = window.AppInterface;
 UserAgent.init();
 var userAgent = window.navigator.userAgent.toLowerCase(), isTv = userAgent.includes("smart-tv") || userAgent.includes("smarttv") || /\baft.*\b/.test(userAgent), isVr = window.navigator.userAgent.includes("VR") && window.navigator.userAgent.includes("OculusBrowser"), browserHasTouchSupport = "ontouchstart" in window || navigator.maxTouchPoints > 0, userAgentHasTouchSupport = !isTv && !isVr && browserHasTouchSupport, STATES = {
  supportedRegion: !0,
@@ -5251,6 +5251,8 @@ class NavigationDialogManager {
  gamepadHoldingIntervalId = null;
  nativeGetGamepads = window.navigator.getGamepads.bind(window.navigator);
  savedGetGamepads = null;
+ hadOwnGetGamepads = !1;
+ neutralGamepadsCache = new Map;
  $overlay;
  $container;
  dialog = null;
@@ -5300,14 +5302,17 @@ class NavigationDialogManager {
    let { axes, buttons } = gamepad, releasedButton = null, heldButton = null, lastState = this.gamepadLastStates[gamepad.index], lastTimestamp, lastKey, lastKeyPressed;
    if (lastState) [lastTimestamp, lastKey, lastKeyPressed] = lastState;
    if (lastTimestamp && lastTimestamp === gamepad.timestamp) continue;
-   for (let key of NavigationDialogManager.GAMEPAD_KEYS)
-    if (lastKey === key && !buttons[key].pressed) {
+   for (let key of NavigationDialogManager.GAMEPAD_KEYS) {
+    let btn = buttons[key];
+    if (!btn) continue;
+    if (lastKey === key && !btn.pressed) {
      releasedButton = key;
      break;
-    } else if (buttons[key].pressed) {
+    } else if (btn.pressed) {
      heldButton = key;
      break;
     }
+   }
    if (heldButton === null && releasedButton === null && axes && axes.length >= 2) {
     if (lastKey) {
      let releasedHorizontal = Math.abs(axes[0]) < 0.1 && (lastKey === 102 || lastKey === 103), releasedVertical = Math.abs(axes[1]) < 0.1 && (lastKey === 100 || lastKey === 101);
@@ -5380,6 +5385,14 @@ class NavigationDialogManager {
    if (dialogIndex > -1) this.dialogsStack = this.dialogsStack.slice(0, dialogIndex);
   }
   if (this.unmountCurrentDialog(), window.BX_EXPOSED.disableGamepadPolling = !1, this.dialogsStack.length) this.dialogsStack[this.dialogsStack.length - 1].show();
+  else if (window.location.hostname === "play.xbox.com" && STATES.isPlaying) window.setTimeout(() => {
+    if (this.isShowing()) return;
+    let $streamTarget = document.querySelector('[data-testid="media-container"] video, [data-testid="media-container"], #game-stream video, #game-stream');
+    if ($streamTarget) {
+     if ($streamTarget.tabIndex < 0) $streamTarget.tabIndex = -1;
+     $streamTarget.focus({ preventScroll: !0 });
+    }
+   }, 60);
  }
  focus($elm) {
   if (!$elm) return !1;
@@ -5448,15 +5461,43 @@ class NavigationDialogManager {
   }
   return null;
  }
+ getNeutralGamepads = () => {
+  let realPads = this.nativeGetGamepads(), result = [];
+  for (let i = 0;i < realPads.length; i++) {
+   let gp = realPads[i];
+   if (!gp || !gp.connected) {
+    result.push(null);
+    continue;
+   }
+   let neutral = this.neutralGamepadsCache.get(i);
+   if (!neutral || neutral.id !== gp.id || neutral.buttons.length !== gp.buttons.length || neutral.axes.length !== gp.axes.length) neutral = {
+     axes: Object.freeze(Array(gp.axes.length).fill(0)),
+     buttons: Object.freeze(Array(gp.buttons.length).fill(null).map(() => Object.freeze({
+      pressed: !1,
+      touched: !1,
+      value: 0
+     }))),
+     connected: !0,
+     id: gp.id,
+     index: gp.index,
+     mapping: gp.mapping,
+     timestamp: gp.timestamp,
+     vibrationActuator: gp.vibrationActuator ?? null,
+     hapticActuators: gp.hapticActuators ?? []
+    }, this.neutralGamepadsCache.set(i, neutral);
+   result.push(neutral);
+  }
+  return result;
+ };
  startGamepadPolling() {
   if (this.stopGamepadPolling(), window.location.hostname === "play.xbox.com" && !this.savedGetGamepads) {
-   this.savedGetGamepads = window.navigator.getGamepads;
+   this.neutralGamepadsCache.clear(), this.hadOwnGetGamepads = Object.prototype.hasOwnProperty.call(window.navigator, "getGamepads"), this.savedGetGamepads = window.navigator.getGamepads;
    try {
-    window.navigator.getGamepads = () => [null, null, null, null];
+    window.navigator.getGamepads = this.getNeutralGamepads;
    } catch (e) {
     try {
      Object.defineProperty(window.navigator, "getGamepads", {
-      value: () => [null, null, null, null],
+      value: this.getNeutralGamepads,
       configurable: !0,
       writable: !0
      });
@@ -5466,19 +5507,30 @@ class NavigationDialogManager {
   this.gamepadPollingIntervalId = window.setInterval(this.pollGamepad, NavigationDialogManager.GAMEPAD_POLLING_INTERVAL);
  }
  stopGamepadPolling() {
-  if (this.gamepadLastStates = [], this.gamepadPollingIntervalId && window.clearInterval(this.gamepadPollingIntervalId), this.gamepadPollingIntervalId = null, this.savedGetGamepads) {
-   try {
-    window.navigator.getGamepads = this.savedGetGamepads;
-   } catch (e) {
-    try {
-     Object.defineProperty(window.navigator, "getGamepads", {
-      value: this.savedGetGamepads,
-      configurable: !0,
-      writable: !0
-     });
-    } catch (e2) {}
-   }
-   this.savedGetGamepads = null;
+  if (this.gamepadLastStates = [], this.neutralGamepadsCache.clear(), this.gamepadPollingIntervalId && window.clearInterval(this.gamepadPollingIntervalId), this.gamepadPollingIntervalId = null, this.savedGetGamepads) {
+   if (this.hadOwnGetGamepads) try {
+     window.navigator.getGamepads = this.savedGetGamepads;
+    } catch (e) {
+     try {
+      Object.defineProperty(window.navigator, "getGamepads", {
+       value: this.savedGetGamepads,
+       configurable: !0,
+       writable: !0
+      });
+     } catch (e2) {}
+    }
+   else try {
+     delete window.navigator.getGamepads;
+    } catch (e) {
+     try {
+      Object.defineProperty(window.navigator, "getGamepads", {
+       value: this.savedGetGamepads,
+       configurable: !0,
+       writable: !0
+      });
+     } catch (e2) {}
+    }
+   this.savedGetGamepads = null, this.hadOwnGetGamepads = !1;
   }
  }
  focusDirection(direction) {
@@ -9590,16 +9642,28 @@ class GuideMenu {
  observer = null;
  gamepadHomePrevPressed = !1;
  guideOpenedAt = 0;
+ nativeGetGamepads = window.navigator.getGamepads.bind(window.navigator);
  isGuideMenuOpen() {
-  return !!document.querySelector('#guide-tab-bar, #guide-jump-landing-page, #dialog-root [role="dialog"]');
+  return !!document.querySelector("#guide-tab-bar, #guide-jump-landing-page");
+ }
+ restoreStreamFocus() {
+  if (window.location.hostname !== "play.xbox.com" || !STATES.isPlaying) return;
+  window.setTimeout(() => {
+   if (this.isGuideMenuOpen() || NavigationDialogManager.getInstance().isShowing()) return;
+   let $streamTarget = document.querySelector('[data-testid="media-container"] video, [data-testid="media-container"], #game-stream video, #game-stream');
+   if ($streamTarget) {
+    if ($streamTarget.tabIndex < 0) $streamTarget.tabIndex = -1;
+    $streamTarget.focus({ preventScroll: !0 });
+   }
+  }, 80);
  }
  closeGuideMenu() {
   if (window.BX_EXPOSED.dialogRoutes) {
    window.BX_EXPOSED.dialogRoutes.closeAll();
    return;
   }
-  let $newCloseBtn = document.querySelector('#guide-tab-bar button:last-of-type, #dialog-root [role="dialog"] button[aria-label*="Fechar"], #dialog-root [role="dialog"] button[aria-label*="Close"]');
-  if ($newCloseBtn && $newCloseBtn.id !== "guide-tab-profile") {
+  let $newCloseBtn = document.querySelector('#dialog-root [role="dialog"] button[aria-label*="Fechar"], #dialog-root [role="dialog"] button[aria-label*="Close"]');
+  if ($newCloseBtn) {
    $newCloseBtn.click();
    return;
   }
@@ -9608,7 +9672,8 @@ class GuideMenu {
    $btnClose.click();
    return;
   }
-  (document.querySelector('#dialog-root [role="dialog"]') || document.documentElement).dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", code: "Escape", keyCode: 27, which: 27, bubbles: !0, cancelable: !0 })), document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", code: "Escape", keyCode: 27, which: 27, bubbles: !0, cancelable: !0 }));
+  let $dialog = document.querySelector('#guide-jump-landing-page, #guide-tab-bar, #dialog-root [role="dialog"]') || document.activeElement || document.documentElement, escDown = new KeyboardEvent("keydown", { key: "Escape", code: "Escape", keyCode: 27, which: 27, bubbles: !0, cancelable: !0 }), escUp = new KeyboardEvent("keyup", { key: "Escape", code: "Escape", keyCode: 27, which: 27, bubbles: !0, cancelable: !0 });
+  $dialog.dispatchEvent(escDown), $dialog.dispatchEvent(escUp), document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", code: "Escape", keyCode: 27, which: 27, bubbles: !0, cancelable: !0 })), window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", code: "Escape", keyCode: 27, which: 27, bubbles: !0, cancelable: !0 }));
  }
  watchGuideMenu = () => {
   if (this.observer) return;
@@ -9616,6 +9681,7 @@ class GuideMenu {
   this.observer = new MutationObserver(() => {
    let isOpen = this.isGuideMenuOpen();
    if (isOpen && !wasOpen) this.guideOpenedAt = performance.now();
+   else if (!isOpen && wasOpen) this.restoreStreamFocus();
    wasOpen = isOpen;
    let $newGuideRoot = document.querySelector("#guide-jump-landing-page");
    if ($newGuideRoot) this.injectHome($newGuideRoot, STATES.isPlaying);
@@ -9623,17 +9689,23 @@ class GuideMenu {
    childList: !0,
    subtree: !0
   }), window.setInterval(() => {
-   let gamepads = window.navigator.getGamepads ? window.navigator.getGamepads() : [], homePressed = !1;
+   if (NavigationDialogManager.getInstance().isShowing()) {
+    this.gamepadHomePrevPressed = !1;
+    return;
+   }
+   let gamepads = this.nativeGetGamepads ? this.nativeGetGamepads() : [], homePressed = !1;
    for (let gp of gamepads)
     if (gp && gp.connected && gp.buttons[16]?.pressed) {
      homePressed = !0;
      break;
     }
    if (homePressed && !this.gamepadHomePrevPressed) {
-    if (this.isGuideMenuOpen() && performance.now() - this.guideOpenedAt > 350) this.closeGuideMenu();
+    if (this.isGuideMenuOpen() && performance.now() - this.guideOpenedAt > 500) window.setTimeout(() => {
+      if (this.isGuideMenuOpen() && !NavigationDialogManager.getInstance().isShowing()) this.closeGuideMenu();
+     }, 150);
    }
    this.gamepadHomePrevPressed = homePressed;
-  }, 50);
+  }, 60);
  };
  renderButtons() {
   if (this.$renderedButtons) return this.$renderedButtons;
@@ -11389,7 +11461,7 @@ class StreamUiHandler {
      statsBtnObj.$btn.classList.toggle("bx-stream-menu-button-on", isOn);
     };
     statsBtnObj.$btn.addEventListener("click", async (e) => {
-     e.preventDefault(), e.stopPropagation(), await streamStats.toggle(), updateStatsBtnState(), collapseHud();
+     e.preventDefault(), e.stopPropagation(), await streamStats.toggle(), updateStatsBtnState(), collapseHud(), statsBtnObj.$btn.blur();
     }), updateStatsBtnState(), $buttonsRow.appendChild(settingsBtnObj.$span), $buttonsRow.appendChild(statsBtnObj.$span);
    }
   };
@@ -11771,29 +11843,8 @@ function main() {
      }
     }
    }
-  }, homeBtnWasPressed = !1;
-  if (window.setInterval(() => {
-   if (!STATES.isPlaying || NavigationDialogManager.getInstance().isShowing()) {
-    homeBtnWasPressed = !1;
-    return;
-   }
-   let pads = window.navigator.getGamepads?.() || [], pressedNow = !1;
-   for (let pad of pads)
-    if (pad && pad.connected && pad.buttons[16]?.pressed) {
-     pressedNow = !0;
-     break;
-    }
-   if (pressedNow && !homeBtnWasPressed) {
-    let $guidePanel = document.querySelector('#NexusId [role="dialog"], [role="dialog"]');
-    if ($guidePanel && !$guidePanel.closest(".bx-navigation-dialog")) {
-     let txt = ($guidePanel.textContent || "").toLowerCase();
-     if (txt.includes("sair do jogo") || txt.includes("quit game") || txt.includes("jogados recentemente") || txt.includes("recently played")) window.setTimeout(() => {
-       document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", code: "Escape", bubbles: !0 }));
-      }, 80);
-    }
-   }
-   homeBtnWasPressed = pressedNow;
-  }, 120), disableFeedbackDialog || hiddenSections.length > 0 || blockedFeatures.includes("friends")) {
+  };
+  if (disableFeedbackDialog || hiddenSections.length > 0 || blockedFeatures.includes("friends")) {
    let filterTimer = null;
    new MutationObserver(() => {
     if (filterTimer) return;

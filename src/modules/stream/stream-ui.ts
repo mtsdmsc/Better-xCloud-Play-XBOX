@@ -312,6 +312,7 @@ export class StreamUiHandler {
                     await streamStats.toggle();
                     updateStatsBtnState();
                     collapseHud();
+                    statsBtnObj.$btn.blur();
                 });
 
                 updateStatsBtnState();

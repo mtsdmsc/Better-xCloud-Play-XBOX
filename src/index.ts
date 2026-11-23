@@ -760,37 +760,6 @@ function main() {
             }
         };
 
-        // 4. Xbox Home button (button 16) on gamepad: allow closing the Xbox Guide panel when already open in-game
-        let homeBtnWasPressed = false;
-        window.setInterval(() => {
-            if (!STATES.isPlaying || NavigationDialogManager.getInstance().isShowing()) {
-                homeBtnWasPressed = false;
-                return;
-            }
-            const pads = window.navigator.getGamepads?.() || [];
-            let pressedNow = false;
-            for (const pad of pads) {
-                if (pad && pad.connected && pad.buttons[16]?.pressed) {
-                    pressedNow = true;
-                    break;
-                }
-            }
-
-            if (pressedNow && !homeBtnWasPressed) {
-                // Check if Xbox Guide panel is currently open
-                const $guidePanel = document.querySelector<HTMLElement>('#NexusId [role="dialog"], [role="dialog"]');
-                if ($guidePanel && !$guidePanel.closest('.bx-navigation-dialog')) {
-                    const txt = ($guidePanel.textContent || '').toLowerCase();
-                    if (txt.includes('sair do jogo') || txt.includes('quit game') || txt.includes('jogados recentemente') || txt.includes('recently played')) {
-                        window.setTimeout(() => {
-                            document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', code: 'Escape', bubbles: true }));
-                        }, 80);
-                    }
-                }
-            }
-            homeBtnWasPressed = pressedNow;
-        }, 120);
-
         if (disableFeedbackDialog || hiddenSections.length > 0 || blockedFeatures.includes(BlockFeature.FRIENDS)) {
             let filterTimer: number | null = null;
             const scheduleFilters = () => {

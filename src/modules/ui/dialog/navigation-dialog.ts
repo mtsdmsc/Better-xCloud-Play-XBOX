@@ -5,6 +5,7 @@ import { VIRTUAL_GAMEPAD_ID } from "@/modules/mkb/mkb-handler";
 import { BxEvent } from "@/utils/bx-event";
 import { BxEventBus } from "@/utils/bx-event-bus";
 import { BxLogger } from "@/utils/bx-logger";
+import { STATES } from "@/utils/global";
 import { calculateSelectBoxes, CE, isElementVisible } from "@/utils/html";
 import { setNearby } from "@/utils/navigation-utils";
 import { BxNumberStepper } from "@/web-components/bx-number-stepper";
@@ -151,6 +152,8 @@ export class NavigationDialogManager {
     private gamepadHoldingIntervalId: number | null = null;
     private nativeGetGamepads: Navigator['getGamepads'] = window.navigator.getGamepads.bind(window.navigator);
     private savedGetGamepads: Navigator['getGamepads'] | null = null;
+    private hadOwnGetGamepads = false;
+    private neutralGamepadsCache: Map<number, Gamepad> = new Map();
 
     private $overlay: HTMLElement;
     private $container: HTMLElement;
@@ -280,11 +283,15 @@ export class NavigationDialogManager {
             }
 
             for (const key of NavigationDialogManager.GAMEPAD_KEYS) {
+                const btn = buttons[key];
+                if (!btn) {
+                    continue;
+                }
                 // Key released
-                if (lastKey === key && !buttons[key].pressed) {
+                if (lastKey === key && !btn.pressed) {
                     releasedButton = key;
                     break;
-                } else if (buttons[key].pressed) {
+                } else if (btn.pressed) {
                     // Key pressed
                     heldButton = key;
                     break;
@@ -494,6 +501,20 @@ export class NavigationDialogManager {
         // Show the last dialog in dialogs stack
         if (this.dialogsStack.length) {
             this.dialogsStack[this.dialogsStack.length - 1].show();
+        } else if (window.location.hostname === 'play.xbox.com' && STATES.isPlaying) {
+            // Restore focus back to the game stream container so gamepad/keyboard input resumes immediately
+            window.setTimeout(() => {
+                if (this.isShowing()) {
+                    return;
+                }
+                const $streamTarget = document.querySelector<HTMLElement>('[data-testid="media-container"] video, [data-testid="media-container"], #game-stream video, #game-stream');
+                if ($streamTarget) {
+                    if ($streamTarget.tabIndex < 0) {
+                        $streamTarget.tabIndex = -1;
+                    }
+                    $streamTarget.focus({ preventScroll: true });
+                }
+            }, 60);
         }
     }
 
@@ -653,19 +674,58 @@ export class NavigationDialogManager {
         return null;
     }
 
+    private getNeutralGamepads = (): (Gamepad | null)[] => {
+        const realPads = this.nativeGetGamepads();
+        const result: (Gamepad | null)[] = [];
+
+        for (let i = 0; i < realPads.length; i++) {
+            const gp = realPads[i];
+            if (!gp || !gp.connected) {
+                result.push(null);
+                continue;
+            }
+
+            let neutral = this.neutralGamepadsCache.get(i);
+            if (!neutral || neutral.id !== gp.id || neutral.buttons.length !== gp.buttons.length || neutral.axes.length !== gp.axes.length) {
+                neutral = {
+                    axes: Object.freeze(new Array(gp.axes.length).fill(0)),
+                    buttons: Object.freeze(new Array(gp.buttons.length).fill(null).map(() => Object.freeze({
+                        pressed: false,
+                        touched: false,
+                        value: 0,
+                    }))),
+                    connected: true,
+                    id: gp.id,
+                    index: gp.index,
+                    mapping: gp.mapping,
+                    timestamp: gp.timestamp,
+                    vibrationActuator: (gp as any).vibrationActuator ?? null,
+                    hapticActuators: (gp as any).hapticActuators ?? [],
+                } as unknown as Gamepad;
+                this.neutralGamepadsCache.set(i, neutral);
+            }
+            result.push(neutral);
+        }
+
+        return result;
+    }
+
     private startGamepadPolling() {
         this.stopGamepadPolling();
 
-        // On play.xbox.com, hide physical gamepads from the page while Better xCloud dialog is open
-        // so D-pad/stick navigation only controls the dialog and never moves games behind it.
+        // On play.xbox.com, report neutral (idle) connected gamepads while Better xCloud dialog is open.
+        // Keeping connected=true prevents xCloud's stream SDK from thinking the controller unplugged,
+        // while zeroed axes/buttons prevent dialog navigation from moving the game behind it.
         if (window.location.hostname === 'play.xbox.com' && !this.savedGetGamepads) {
+            this.neutralGamepadsCache.clear();
+            this.hadOwnGetGamepads = Object.prototype.hasOwnProperty.call(window.navigator, 'getGamepads');
             this.savedGetGamepads = window.navigator.getGamepads;
             try {
-                window.navigator.getGamepads = () => [null, null, null, null] as any;
+                window.navigator.getGamepads = this.getNeutralGamepads as any;
             } catch (e) {
                 try {
                     Object.defineProperty(window.navigator, 'getGamepads', {
-                        value: () => [null, null, null, null],
+                        value: this.getNeutralGamepads,
                         configurable: true,
                         writable: true,
                     });
@@ -680,23 +740,39 @@ export class NavigationDialogManager {
 
     private stopGamepadPolling() {
         this.gamepadLastStates = [];
+        this.neutralGamepadsCache.clear();
 
         this.gamepadPollingIntervalId && window.clearInterval(this.gamepadPollingIntervalId);
         this.gamepadPollingIntervalId = null;
 
         if (this.savedGetGamepads) {
-            try {
-                window.navigator.getGamepads = this.savedGetGamepads;
-            } catch (e) {
+            if (this.hadOwnGetGamepads) {
                 try {
-                    Object.defineProperty(window.navigator, 'getGamepads', {
-                        value: this.savedGetGamepads,
-                        configurable: true,
-                        writable: true,
-                    });
-                } catch (e2) {}
+                    window.navigator.getGamepads = this.savedGetGamepads;
+                } catch (e) {
+                    try {
+                        Object.defineProperty(window.navigator, 'getGamepads', {
+                            value: this.savedGetGamepads,
+                            configurable: true,
+                            writable: true,
+                        });
+                    } catch (e2) {}
+                }
+            } else {
+                try {
+                    delete (window.navigator as any).getGamepads;
+                } catch (e) {
+                    try {
+                        Object.defineProperty(window.navigator, 'getGamepads', {
+                            value: this.savedGetGamepads,
+                            configurable: true,
+                            writable: true,
+                        });
+                    } catch (e2) {}
+                }
             }
             this.savedGetGamepads = null;
+            this.hadOwnGetGamepads = false;
         }
     }
 

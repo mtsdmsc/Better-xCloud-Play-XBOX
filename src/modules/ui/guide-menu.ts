@@ -2,6 +2,7 @@ import { AppInterface, STATES } from "@/utils/global";
 import { createButton, ButtonStyle, CE } from "@/utils/html";
 import { t } from "@/utils/translation";
 import { SettingsDialog } from "./dialog/settings-dialog";
+import { NavigationDialogManager } from "./dialog/navigation-dialog";
 import { BxIcon } from "@/utils/bx-icon";
 import { BxEventBus } from "@/utils/bx-event-bus";
 import { getGlobalPref } from "@/utils/pref-utils";
@@ -21,9 +22,28 @@ export class GuideMenu {
     private observer: MutationObserver | null = null;
     private gamepadHomePrevPressed = false;
     private guideOpenedAt = 0;
+    private nativeGetGamepads: Navigator['getGamepads'] = window.navigator.getGamepads.bind(window.navigator);
 
     isGuideMenuOpen(): boolean {
-        return !!document.querySelector('#guide-tab-bar, #guide-jump-landing-page, #dialog-root [role="dialog"]');
+        return !!document.querySelector('#guide-tab-bar, #guide-jump-landing-page');
+    }
+
+    private restoreStreamFocus() {
+        if (window.location.hostname !== 'play.xbox.com' || !STATES.isPlaying) {
+            return;
+        }
+        window.setTimeout(() => {
+            if (this.isGuideMenuOpen() || NavigationDialogManager.getInstance().isShowing()) {
+                return;
+            }
+            const $streamTarget = document.querySelector<HTMLElement>('[data-testid="media-container"] video, [data-testid="media-container"], #game-stream video, #game-stream');
+            if ($streamTarget) {
+                if ($streamTarget.tabIndex < 0) {
+                    $streamTarget.tabIndex = -1;
+                }
+                $streamTarget.focus({ preventScroll: true });
+            }
+        }, 80);
     }
 
     closeGuideMenu() {
@@ -32,9 +52,9 @@ export class GuideMenu {
             return;
         }
 
-        // New play.xbox.com close button in Guide tab bar or Escape key
-        const $newCloseBtn = document.querySelector<HTMLElement>('#guide-tab-bar button:last-of-type, #dialog-root [role="dialog"] button[aria-label*="Fechar"], #dialog-root [role="dialog"] button[aria-label*="Close"]');
-        if ($newCloseBtn && $newCloseBtn.id !== 'guide-tab-profile') {
+        // Only click explicit Close buttons (never tab bar buttons like Achievements)
+        const $newCloseBtn = document.querySelector<HTMLElement>('#dialog-root [role="dialog"] button[aria-label*="Fechar"], #dialog-root [role="dialog"] button[aria-label*="Close"]');
+        if ($newCloseBtn) {
             $newCloseBtn.click();
             return;
         }
@@ -46,9 +66,13 @@ export class GuideMenu {
             return;
         }
 
-        const $dialog = document.querySelector<HTMLElement>('#dialog-root [role="dialog"]') || document.documentElement;
-        $dialog.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', code: 'Escape', keyCode: 27, which: 27, bubbles: true, cancelable: true }));
+        const $dialog = document.querySelector<HTMLElement>('#guide-jump-landing-page, #guide-tab-bar, #dialog-root [role="dialog"]') || document.activeElement as HTMLElement || document.documentElement;
+        const escDown = new KeyboardEvent('keydown', { key: 'Escape', code: 'Escape', keyCode: 27, which: 27, bubbles: true, cancelable: true });
+        const escUp = new KeyboardEvent('keyup', { key: 'Escape', code: 'Escape', keyCode: 27, which: 27, bubbles: true, cancelable: true });
+        $dialog.dispatchEvent(escDown);
+        $dialog.dispatchEvent(escUp);
         document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', code: 'Escape', keyCode: 27, which: 27, bubbles: true, cancelable: true }));
+        window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', code: 'Escape', keyCode: 27, which: 27, bubbles: true, cancelable: true }));
     }
 
     watchGuideMenu = () => {
@@ -61,6 +85,8 @@ export class GuideMenu {
             const isOpen = this.isGuideMenuOpen();
             if (isOpen && !wasOpen) {
                 this.guideOpenedAt = performance.now();
+            } else if (!isOpen && wasOpen) {
+                this.restoreStreamFocus();
             }
             wasOpen = isOpen;
 
@@ -75,9 +101,13 @@ export class GuideMenu {
             subtree: true,
         });
 
-        // Poll physical gamepad Xbox/Home button (button[16]) to close the Guide menu when pressed again
+        // Poll physical gamepad Xbox/Home button (button[16]) to close the Guide menu if play.xbox.com doesn't close it natively
         window.setInterval(() => {
-            const gamepads = window.navigator.getGamepads ? window.navigator.getGamepads() : [];
+            if (NavigationDialogManager.getInstance().isShowing()) {
+                this.gamepadHomePrevPressed = false;
+                return;
+            }
+            const gamepads = this.nativeGetGamepads ? this.nativeGetGamepads() : [];
             let homePressed = false;
             for (const gp of gamepads) {
                 if (gp && gp.connected && gp.buttons[16]?.pressed) {
@@ -87,12 +117,17 @@ export class GuideMenu {
             }
 
             if (homePressed && !this.gamepadHomePrevPressed) {
-                if (this.isGuideMenuOpen() && (performance.now() - this.guideOpenedAt > 350)) {
-                    this.closeGuideMenu();
+                if (this.isGuideMenuOpen() && (performance.now() - this.guideOpenedAt > 500)) {
+                    // Wait briefly so native Guide toggle runs first; only close via Escape if still open
+                    window.setTimeout(() => {
+                        if (this.isGuideMenuOpen() && !NavigationDialogManager.getInstance().isShowing()) {
+                            this.closeGuideMenu();
+                        }
+                    }, 150);
                 }
             }
             this.gamepadHomePrevPressed = homePressed;
-        }, 50);
+        }, 60);
     }
 
     private renderButtons() {
