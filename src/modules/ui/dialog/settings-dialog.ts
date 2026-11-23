@@ -29,6 +29,7 @@ import { BxEventBus } from "@/utils/bx-event-bus";
 import { getGlobalPref, getPrefInfo, getStreamPref, isStreamPref, setGlobalPref, STORAGE } from "@/utils/pref-utils";
 import { SettingsManager } from "@/modules/settings-manager";
 import { Toast } from "@/utils/toast";
+import { PlaytimeTracker } from "@/utils/playtime-tracker";
 
 // Desktop-only mode: apenas oculta seções/opções de Mobile e TV na UI (código preservado para futura reativação)
 const DESKTOP_ONLY_MODE = true;
@@ -157,6 +158,35 @@ export class SettingsDialog extends NavigationDialog {
                     ' + ',
                     CE('kbd', false, 'X'),
                 ));
+
+                // Playtime tracker summary (alerts every 30 min in-game for monthly quota control)
+                const ptTracker = PlaytimeTracker.getInstance();
+                const $ptSummary = CE('span', false, '');
+                const refreshPlaytimeText = () => {
+                    const data = ptTracker.getData();
+                    $ptSummary.textContent = `⏱️ ${t('playtime')}: ${t('playtime-today')} ${PlaytimeTracker.formatMinutes(data.dayMinutes)} • ${t('playtime-month')} ${PlaytimeTracker.formatMinutes(data.monthMinutes)}`;
+                };
+                refreshPlaytimeText();
+
+                const $btnResetPt = CE('button', {
+                    type: 'button',
+                    class: 'bx-playtime-reset-btn',
+                    title: t('playtime-reset'),
+                    _on: {
+                        click: () => {
+                            if (confirm(t('playtime-reset-confirm'))) {
+                                ptTracker.resetCycle();
+                                refreshPlaytimeText();
+                            }
+                        },
+                    },
+                }, t('playtime-reset'));
+
+                topButtons.push(CE('div', {
+                    class: 'bx-playtime-badge',
+                }, $ptSummary, $btnResetPt));
+
+                this.onMountedCallbacks.push(refreshPlaytimeText);
 
                 // Suggestion
                 this.$btnSuggestion = CE('div', {

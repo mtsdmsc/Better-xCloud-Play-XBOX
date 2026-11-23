@@ -45,6 +45,7 @@ import { BxEventBus } from "./utils/bx-event-bus";
 import { getGlobalPref, getStreamPref } from "./utils/pref-utils";
 import { SettingsManager } from "./modules/settings-manager";
 import { Toast } from "./utils/toast";
+import { PlaytimeTracker } from "./utils/playtime-tracker";
 import { WebGPUPlayer } from "./modules/player/webgpu/webgpu-player";
 import { StreamUiHandler } from "./modules/stream/stream-ui";
 import { TrueAchievements } from "./utils/true-achievements";
@@ -303,6 +304,7 @@ BxEventBus.Stream.on('state.playing', payload => {
     }
 
     STATES.isPlaying = true;
+    PlaytimeTracker.getInstance().startSession();
 
     if (isFullVersion()) {
         const gameBar = GameBar.getInstance();
@@ -436,6 +438,7 @@ function unload() {
     STATES.currentStream.streamPlayerManager?.destroy();
 
     STATES.isPlaying = false;
+    PlaytimeTracker.getInstance().stopSession();
     STATES.currentStream = {};
     window.BX_EXPOSED.shouldShowSensorControls = false;
     window.BX_EXPOSED.stopTakRendering = false;
@@ -614,15 +617,33 @@ function main() {
 
         const SECTION_HEADING_KEYWORDS: Partial<Record<UiSection, string[]>> = {
             [UiSection.NEWS]: ['novidades', 'news'],
-            [UiSection.FRIENDS]: ['jogue com amigos', 'play with friends'],
-            [UiSection.NATIVE_MKB]: ['mouse e teclado', 'mouse & keyboard', 'mouse and keyboard'],
-            [UiSection.TOUCH]: ['jogue com toque', 'play with touch'],
+            [UiSection.FRIENDS]: ['jogue com amigos', 'jogar com amigos', 'play with friends'],
+            [UiSection.NATIVE_MKB]: ['jogar com mouse e teclado', 'jogue com mouse e teclado', 'mouse e teclado', 'play with mouse'],
+            [UiSection.TOUCH]: ['jogar com toque', 'jogue com toque', 'play with touch'],
             [UiSection.MOST_POPULAR]: ['mais populares', 'most popular'],
             [UiSection.BOYG]: ['transmita seu próprio jogo', 'jogue jogos que você possui', 'stream your own game'],
             [UiSection.RECENTLY_ADDED]: ['adicionados recentemente', 'recently added'],
-            [UiSection.LEAVING_SOON]: ['saindo em breve', 'leaving soon'],
+            [UiSection.LEAVING_SOON]: ['saindo de cena em breve', 'saindo em breve', 'leaving soon'],
             [UiSection.GENRES]: ['gêneros', 'generos', 'genres'],
-            [UiSection.ALL_GAMES]: ['todos os jogos', 'all games'],
+            [UiSection.ALL_GAMES]: ['jogar com o game pass', 'todos os jogos', 'all games', 'play with game pass'],
+        };
+
+        const getSectionBlock = ($headingEl: HTMLElement): HTMLElement | null => {
+            const $main = document.querySelector('main');
+            if (!$main) {
+                return null;
+            }
+            // Walk up to the direct child of the vertical feed container (the container holding multiple rows)
+            let cur: HTMLElement | null = $headingEl;
+            while (cur && cur.parentElement && cur.parentElement !== $main && cur.parentElement !== document.body) {
+                const parent = cur.parentElement;
+                // A feed container usually has >= 3 sibling section rows
+                if (parent.children.length >= 4 && cur.getBoundingClientRect().height < window.innerHeight * 0.85) {
+                    return cur;
+                }
+                cur = parent;
+            }
+            return null;
         };
 
         const applyNewSiteDomFilters = () => {
@@ -635,7 +656,6 @@ function main() {
                     }
                     const txt = ($el.textContent || '').trim().toLowerCase();
                     if (txt === 'como foi sua sessão?' || txt === 'how was your session?') {
-                        // Walk up to the dialog/modal root containing the close button
                         let $modal: HTMLElement | null = $el.closest<HTMLElement>('[role="dialog"]');
                         if (!$modal) {
                             let cur: HTMLElement | null = $el.parentElement;
@@ -651,7 +671,6 @@ function main() {
                         }
 
                         if ($modal) {
-                            // Try clicking the top-right close button (usually first button or button with SVG/aria-label)
                             const buttons = Array.from($modal.querySelectorAll<HTMLButtonElement>('button'));
                             const $closeBtn = buttons.find(b => {
                                 const label = (b.getAttribute('aria-label') || b.title || '').toLowerCase();
@@ -670,30 +689,39 @@ function main() {
                 }
             }
 
-            // 2. Hide selected sections safely on play.xbox.com (never hide a container with multiple sections!)
+            // 2. Hide selected sections on play.xbox.com (headings can be h2, h3, a, or span)
             if (hiddenSections.length > 0) {
-                const headings = document.querySelectorAll<HTMLElement>('main h2, main h3, main [role="heading"]');
-                for (const $h of headings) {
-                    const txt = ($h.textContent || '').trim().toLowerCase();
-                    if (!txt || txt.length > 60) {
-                        continue;
-                    }
-                    for (const section of hiddenSections) {
-                        const keywords = SECTION_HEADING_KEYWORDS[section];
-                        if (keywords && keywords.some(k => txt === k || txt.startsWith(k))) {
-                            // Walk up only while the ancestor still contains at most 1 section heading
-                            let $target: HTMLElement | null = $h.parentElement;
-                            while ($target && $target.parentElement && $target.parentElement.tagName !== 'MAIN' && $target.parentElement.tagName !== 'BODY') {
-                                const parentHeadings = $target.parentElement.querySelectorAll('h2, h3, [role="heading"]').length;
-                                if (parentHeadings > 1) {
-                                    break;
+                const $main = document.querySelector('main');
+                if ($main) {
+                    const headingEls = $main.querySelectorAll<HTMLElement>('h2, h3, [role="heading"], a');
+                    for (const $h of headingEls) {
+                        // Ignore game cards (which contain images)
+                        if ($h.querySelector('img')) {
+                            continue;
+                        }
+                        const txt = ($h.textContent || '').trim().toLowerCase().replace(/\s+/g, ' ');
+                        if (!txt || txt.length > 50) {
+                            continue;
+                        }
+
+                        // Special case: "Novidades" (News) is the hero banner carousel right after "Voltar a jogar" / "Jump back in"
+                        if (hiddenSections.includes(UiSection.NEWS) && (txt === 'voltar a jogar' || txt === 'jump back in')) {
+                            const $jumpBackBlock = getSectionBlock($h);
+                            const $newsCarousel = $jumpBackBlock?.nextElementSibling as HTMLElement | null;
+                            if ($newsCarousel && !$newsCarousel.querySelector('h2, h3')) {
+                                $newsCarousel.style.display = 'none';
+                            }
+                        }
+
+                        for (const section of hiddenSections) {
+                            const keywords = SECTION_HEADING_KEYWORDS[section];
+                            if (keywords && keywords.some(k => txt === k || txt.startsWith(k))) {
+                                const $block = getSectionBlock($h);
+                                if ($block) {
+                                    $block.style.display = 'none';
                                 }
-                                $target = $target.parentElement;
+                                break;
                             }
-                            if ($target && $target.tagName !== 'MAIN' && $target.tagName !== 'BODY' && $target.querySelectorAll('h2, h3, [role="heading"]').length <= 1) {
-                                $target.style.display = 'none';
-                            }
-                            break;
                         }
                     }
                 }
@@ -713,6 +741,37 @@ function main() {
                 }
             }
         };
+
+        // 4. Xbox Home button (button 16) on gamepad: allow closing the Xbox Guide panel when already open in-game
+        let homeBtnWasPressed = false;
+        window.setInterval(() => {
+            if (!STATES.isPlaying || NavigationDialogManager.getInstance().isShowing()) {
+                homeBtnWasPressed = false;
+                return;
+            }
+            const pads = window.navigator.getGamepads?.() || [];
+            let pressedNow = false;
+            for (const pad of pads) {
+                if (pad && pad.connected && pad.buttons[16]?.pressed) {
+                    pressedNow = true;
+                    break;
+                }
+            }
+
+            if (pressedNow && !homeBtnWasPressed) {
+                // Check if Xbox Guide panel is currently open
+                const $guidePanel = document.querySelector<HTMLElement>('#NexusId [role="dialog"], [role="dialog"]');
+                if ($guidePanel && !$guidePanel.closest('.bx-navigation-dialog')) {
+                    const txt = ($guidePanel.textContent || '').toLowerCase();
+                    if (txt.includes('sair do jogo') || txt.includes('quit game') || txt.includes('jogados recentemente') || txt.includes('recently played')) {
+                        window.setTimeout(() => {
+                            document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', code: 'Escape', bubbles: true }));
+                        }, 80);
+                    }
+                }
+            }
+            homeBtnWasPressed = pressedNow;
+        }, 120);
 
         if (disableFeedbackDialog || hiddenSections.length > 0 || blockedFeatures.includes(BlockFeature.FRIENDS)) {
             let filterTimer: number | null = null;

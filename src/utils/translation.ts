@@ -450,6 +450,11 @@ const Texts = {
     "tooltip-controller": "Manage local co-op, controller polling rate, shortcuts, button customization, and deadzones.",
     "tooltip-mkb": "Configure emulated Mouse & Keyboard mappings, in-game keyboard shortcuts, and native MKB scroll sensitivity.",
     "tooltip-stats": "Display real-time stream stats bar (FPS, Ping, Bitrate, Decode time, Packet loss) while playing.",
+    "playtime-alert-title": "Playtime alert",
+    "playtime-today": "Today",
+    "playtime-month": "Cycle",
+    "playtime-reset": "Reset cycle",
+    "playtime-reset-confirm": "Reset your monthly/daily playtime counter?",
 };
 
 const PtBrTexts: Partial<Record<keyof typeof Texts, string>> = {
@@ -787,6 +792,11 @@ const PtBrTexts: Partial<Record<keyof typeof Texts, string>> = {
     "tooltip-controller": "Gerencie co-op local, taxa de atualização (polling rate), atalhos e personalização de botões/zonas mortas do controle.",
     "tooltip-mkb": "Configure mapeamentos de Mouse e Teclado emulado, atalhos de teclado no jogo e sensibilidade de rolagem do MKB nativo.",
     "tooltip-stats": "Exibe barra de estatísticas em tempo real (FPS, Ping, Bitrate, Decodificação, Perda de Pacotes) durante a transmissão.",
+    "playtime-alert-title": "Aviso de tempo de jogo",
+    "playtime-today": "Hoje",
+    "playtime-month": "Ciclo",
+    "playtime-reset": "Zerar ciclo",
+    "playtime-reset-confirm": "Deseja zerar o contador de horas jogadas (hoje e ciclo mensal)?",
 };
 
 export class Translations {

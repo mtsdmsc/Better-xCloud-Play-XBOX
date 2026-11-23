@@ -45,8 +45,9 @@ export class Toast {
     }
 
     private show(msg: string, status?: string, options: Partial<ToastOptions> = {}) {
-        if (!this.$wrapper.isConnected) {
-            document.documentElement.appendChild(this.$wrapper);
+        const host = document.fullscreenElement || document.documentElement;
+        if (this.$wrapper.parentElement !== host) {
+            host.appendChild(this.$wrapper);
         }
         options = options || {};
 
