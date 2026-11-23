@@ -22,10 +22,18 @@ export function addCss() {
         selectorToHide.push('div[role=img][class*=SupportedInputsBadge]:not(:has(:nth-child(2)))');
     }
 
+    // Hide "Jump back in" section on play.xbox.com
+    if (PREF_HIDE_SECTIONS.includes(UiSection.JUMP_BACK_IN) && window.location.hostname === 'play.xbox.com') {
+        selectorToHide.push('[data-home-hero-container="true"]');
+    }
+
     // Hide "News" section
     if (PREF_HIDE_SECTIONS.includes(UiSection.NEWS)) {
         selectorToHide.push('#BodyContent > div[class*=CarouselRow-module]');
         selectorToHide.push('section[data-testid="channel-error-container"]');
+        if (window.location.hostname === 'play.xbox.com') {
+            selectorToHide.push('[data-home-iris-container="true"]');
+        }
     }
 
     if (window.location.hostname === 'play.xbox.com') {
@@ -33,19 +41,34 @@ export function addCss() {
     }
 
     // Hide BYOG section
-    if (getGlobalPref(GlobalPref.UI_HIDE_SECTIONS).includes(UiSection.BOYG)) {
+    if (PREF_HIDE_SECTIONS.includes(UiSection.BOYG)) {
         selectorToHide.push('#BodyContent > div[class*=ShowcaseRow-module__container___]');
+        if (window.location.hostname === 'play.xbox.com') {
+            selectorToHide.push('div.flow-root:has([data-sigl-id="e78d9a61-5ef4-43af-b400-edba1250b18e"])');
+        }
     }
 
     // Hide "All games" section
     if (PREF_HIDE_SECTIONS.includes(UiSection.ALL_GAMES)) {
         selectorToHide.push('#BodyContent div[class*=AllGamesRow-module__gridContainer]');
         selectorToHide.push('#BodyContent div[class*=AllGamesRow-module__rowHeader]');
+        if (window.location.hostname === 'play.xbox.com') {
+            selectorToHide.push('div:has(> div > button[data-testid="home-see-all-games-button"])');
+            selectorToHide.push('button[data-testid="home-see-all-games-button"]');
+        }
     }
 
     // Hide "Most popular" section
     if (PREF_HIDE_SECTIONS.includes(UiSection.MOST_POPULAR)) {
         selectorToHide.push('#BodyContent div[class*=HomePage-module__bottomSpacing]:has(a[href="/play/gallery/popular"])');
+        if (window.location.hostname === 'play.xbox.com') {
+            selectorToHide.push('div.flow-root:has([data-sigl-id="6a589fa0-d493-472b-8e20-3813699d7056"])');
+        }
+    }
+
+    // Hide "Ubisoft+ Classics" section on play.xbox.com
+    if (PREF_HIDE_SECTIONS.includes(UiSection.UBISOFT_CLASSICS) && window.location.hostname === 'play.xbox.com') {
+        selectorToHide.push('div.flow-root:has([data-sigl-id="66ec875c-a391-44f5-9a54-a28bd6f976ce"])');
     }
 
     // Hide "Play with touch" section
@@ -56,6 +79,14 @@ export function addCss() {
     // Hide "Recently added" section
     if (PREF_HIDE_SECTIONS.includes(UiSection.RECENTLY_ADDED)) {
         selectorToHide.push('#BodyContent div[class*=HomePage-module__bottomSpacing]:has(a[href="/play/gallery/recently-added"])');
+        if (window.location.hostname === 'play.xbox.com') {
+            selectorToHide.push('div.flow-root:has([data-sigl-id="06323672-b8c8-43cc-b0de-32d5a9834749"])');
+        }
+    }
+
+    // Hide "Play with mouse & keyboard" section on play.xbox.com
+    if (PREF_HIDE_SECTIONS.includes(UiSection.NATIVE_MKB) && window.location.hostname === 'play.xbox.com') {
+        selectorToHide.push('div.flow-root:has([data-sigl-id="3aa7a358-f15b-476b-af7e-134a250c08a0"])');
     }
 
     // Hide "Genres section"
@@ -86,8 +117,8 @@ export function addCss() {
         }
     }
 
-    if (selectorToHide) {
-        css += selectorToHide.join(',') + '{ display: none; }';
+    if (selectorToHide.length > 0) {
+        css += selectorToHide.join(',') + '{ display: none !important; }';
     }
 
     // Change site's background

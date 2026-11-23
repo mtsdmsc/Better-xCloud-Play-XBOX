@@ -617,16 +617,19 @@ function main() {
         const blockedFeatures = getGlobalPref(GlobalPref.BLOCK_FEATURES);
 
         const SECTION_HEADING_KEYWORDS: Partial<Record<UiSection, string[]>> = {
+            [UiSection.JUMP_BACK_IN]: ['voltar a jogar', 'jump back in'],
             [UiSection.NEWS]: ['novidades', 'news'],
-            [UiSection.FRIENDS]: ['jogue com amigos', 'jogar com amigos', 'play with friends'],
-            [UiSection.NATIVE_MKB]: ['jogar com mouse e teclado', 'jogue com mouse e teclado', 'mouse e teclado', 'play with mouse'],
-            [UiSection.TOUCH]: ['jogar com toque', 'jogue com toque', 'play with touch'],
-            [UiSection.MOST_POPULAR]: ['mais populares', 'most popular'],
-            [UiSection.BOYG]: ['transmita seu próprio jogo', 'jogue jogos que você possui', 'stream your own game'],
+            [UiSection.GAME_PASS]: ['jogar com o game pass', 'jogar com game pass', 'play with game pass'],
             [UiSection.RECENTLY_ADDED]: ['adicionados recentemente', 'recently added'],
+            [UiSection.MOST_POPULAR]: ['mais populares', 'most popular'],
+            [UiSection.UBISOFT_CLASSICS]: ['ubisoft+ classics', 'ubisoft+'],
+            [UiSection.NATIVE_MKB]: ['jogar com mouse e teclado', 'jogue com mouse e teclado', 'mouse e teclado', 'play with mouse'],
+            [UiSection.BOYG]: ['transmita seu próprio jogo', 'jogue jogos que você possui', 'stream your own game'],
             [UiSection.LEAVING_SOON]: ['saindo de cena em breve', 'saindo em breve', 'leaving soon'],
             [UiSection.GENRES]: ['gêneros', 'generos', 'genres'],
-            [UiSection.ALL_GAMES]: ['jogar com o game pass', 'todos os jogos', 'all games', 'play with game pass'],
+            [UiSection.ALL_GAMES]: ['ver todos os jogos', 'todos os jogos', 'see all games', 'all games'],
+            [UiSection.FRIENDS]: ['jogue com amigos', 'jogar com amigos', 'play with friends'],
+            [UiSection.TOUCH]: ['jogar com toque', 'jogue com toque', 'play with touch'],
         };
 
         const getSectionBlock = ($headingEl: HTMLElement): HTMLElement | null => {
@@ -690,10 +693,33 @@ function main() {
                 }
             }
 
-            // 2. Hide selected sections on play.xbox.com (headings can be h2, h3, a, or span)
+            // 2. Hide selected sections on play.xbox.com (exact containers + heading text fallback)
             if (hiddenSections.length > 0) {
                 const $main = document.querySelector('main');
                 if ($main) {
+                    // Direct selectors confirmed from play.xbox.com DOM
+                    if (hiddenSections.includes(UiSection.JUMP_BACK_IN)) {
+                        const $hero = $main.querySelector<HTMLElement>('[data-home-hero-container="true"]');
+                        if ($hero) {
+                            $hero.style.setProperty('display', 'none', 'important');
+                        }
+                    }
+
+                    if (hiddenSections.includes(UiSection.NEWS)) {
+                        const $iris = $main.querySelector<HTMLElement>('[data-home-iris-container="true"]');
+                        if ($iris) {
+                            $iris.style.setProperty('display', 'none', 'important');
+                        }
+                    }
+
+                    if (hiddenSections.includes(UiSection.ALL_GAMES)) {
+                        const $seeAllBtn = $main.querySelector<HTMLElement>('button[data-testid="home-see-all-games-button"]');
+                        if ($seeAllBtn) {
+                            const $wrapper = $seeAllBtn.parentElement?.parentElement || $seeAllBtn;
+                            $wrapper.style.setProperty('display', 'none', 'important');
+                        }
+                    }
+
                     const headingEls = $main.querySelectorAll<HTMLElement>('h2, h3, [role="heading"], a');
                     for (const $h of headingEls) {
                         // Ignore game cards (which contain images)
@@ -705,21 +731,12 @@ function main() {
                             continue;
                         }
 
-                        // Special case: "Novidades" (News) is the hero banner carousel right after "Voltar a jogar" / "Jump back in"
-                        if (hiddenSections.includes(UiSection.NEWS) && (txt === 'voltar a jogar' || txt === 'jump back in')) {
-                            const $jumpBackBlock = getSectionBlock($h);
-                            const $newsCarousel = $jumpBackBlock?.nextElementSibling as HTMLElement | null;
-                            if ($newsCarousel && !$newsCarousel.querySelector('h2, h3')) {
-                                $newsCarousel.style.display = 'none';
-                            }
-                        }
-
                         for (const section of hiddenSections) {
                             const keywords = SECTION_HEADING_KEYWORDS[section];
                             if (keywords && keywords.some(k => txt === k || txt.startsWith(k))) {
-                                const $block = getSectionBlock($h);
+                                const $block = $h.closest<HTMLElement>('[data-home-hero-container="true"], [data-home-iris-container="true"], div.flow-root, section.my-8') || getSectionBlock($h);
                                 if ($block) {
-                                    $block.style.display = 'none';
+                                    $block.style.setProperty('display', 'none', 'important');
                                 }
                                 break;
                             }

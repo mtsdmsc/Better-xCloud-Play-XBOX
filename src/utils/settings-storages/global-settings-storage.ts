@@ -452,7 +452,19 @@ export class GlobalSettingsStorage extends BaseSettingsStorage<GlobalPref> {
             requiredVariants: 'full',
             label: t('hide-sections'),
             default: [],
-            multipleOptions: {
+            multipleOptions: window.location.hostname === 'play.xbox.com' ? {
+                [UiSection.JUMP_BACK_IN]: t('section-jump-back-in'),
+                [UiSection.NEWS]: t('section-news'),
+                [UiSection.GAME_PASS]: t('section-game-pass'),
+                [UiSection.RECENTLY_ADDED]: t('section-recently-added'),
+                [UiSection.MOST_POPULAR]: t('section-most-popular'),
+                [UiSection.UBISOFT_CLASSICS]: t('section-ubisoft-classics'),
+                [UiSection.NATIVE_MKB]: t('section-native-mkb'),
+                [UiSection.BOYG]: t('stream-your-own-game'),
+                [UiSection.LEAVING_SOON]: t('section-leaving-soon'),
+                [UiSection.GENRES]: t('section-genres'),
+                [UiSection.ALL_GAMES]: t('section-all-games'),
+            } : {
                 [UiSection.NEWS]: t('section-news'),
                 [UiSection.FRIENDS]: t('section-play-with-friends'),
                 [UiSection.NATIVE_MKB]: t('section-native-mkb'),

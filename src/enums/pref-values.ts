@@ -1,14 +1,17 @@
 export const enum UiSection {
-    ALL_GAMES = 'all-games',
-    FRIENDS = 'friends',
-    MOST_POPULAR = 'most-popular',
-    NATIVE_MKB = 'native-mkb',
+    JUMP_BACK_IN = 'jump-back-in',
     NEWS = 'news',
-    TOUCH = 'touch',
-    BOYG = 'byog',
+    GAME_PASS = 'game-pass',
     RECENTLY_ADDED = 'recently-added',
+    MOST_POPULAR = 'most-popular',
+    UBISOFT_CLASSICS = 'ubisoft-classics',
+    NATIVE_MKB = 'native-mkb',
+    BOYG = 'byog',
     LEAVING_SOON = 'leaving-soon',
     GENRES = 'genres',
+    ALL_GAMES = 'all-games',
+    FRIENDS = 'friends',
+    TOUCH = 'touch',
 }
 
 export const enum GameBarPosition {
