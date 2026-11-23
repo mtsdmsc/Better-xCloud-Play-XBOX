@@ -456,6 +456,7 @@ export class NavigationDialogManager {
 
     hide() {
         this.clearGamepadHoldingInterval();
+        this.stopGamepadPolling();
         if (!this.isShowing()) {
             return;
         }

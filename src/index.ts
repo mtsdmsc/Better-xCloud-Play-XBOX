@@ -626,40 +626,72 @@ function main() {
         };
 
         const applyNewSiteDomFilters = () => {
-            // 1. Auto-close post-stream feedback modal
+            // 1. Auto-close post-stream feedback modal ("Como foi sua sessão?" / "How was your session?")
             if (disableFeedbackDialog) {
-                const dialogs = document.querySelectorAll<HTMLElement>('[role="dialog"]');
-                for (const $dlg of dialogs) {
-                    if ($dlg.closest('.bx-navigation-dialog')) {
+                const candidates = document.querySelectorAll<HTMLElement>('h1, h2, h3, [role="heading"], [role="dialog"] p, [role="dialog"] span');
+                for (const $el of candidates) {
+                    if ($el.closest('.bx-navigation-dialog')) {
                         continue;
                     }
-                    const txt = ($dlg.textContent || '').toLowerCase();
-                    if (txt.includes('como foi sua sessão') || txt.includes('how was your session') || txt.includes('escrever comentários') || txt.includes('write feedback')) {
-                        const $closeBtn = $dlg.querySelector<HTMLElement>('button[aria-label*="Fechar"], button[aria-label*="Close"]');
-                        if ($closeBtn) {
-                            $closeBtn.click();
-                        } else {
-                            document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', code: 'Escape', bubbles: true }));
-                            $dlg.style.display = 'none';
+                    const txt = ($el.textContent || '').trim().toLowerCase();
+                    if (txt === 'como foi sua sessão?' || txt === 'how was your session?') {
+                        // Walk up to the dialog/modal root containing the close button
+                        let $modal: HTMLElement | null = $el.closest<HTMLElement>('[role="dialog"]');
+                        if (!$modal) {
+                            let cur: HTMLElement | null = $el.parentElement;
+                            while (cur && cur !== document.body) {
+                                if (cur.querySelector('button') && cur.textContent && (cur.textContent.toLowerCase().includes('ótimo') || cur.textContent.toLowerCase().includes('great'))) {
+                                    $modal = cur;
+                                    if (getComputedStyle(cur).position === 'fixed') {
+                                        break;
+                                    }
+                                }
+                                cur = cur.parentElement;
+                            }
                         }
+
+                        if ($modal) {
+                            // Try clicking the top-right close button (usually first button or button with SVG/aria-label)
+                            const buttons = Array.from($modal.querySelectorAll<HTMLButtonElement>('button'));
+                            const $closeBtn = buttons.find(b => {
+                                const label = (b.getAttribute('aria-label') || b.title || '').toLowerCase();
+                                return label.includes('fechar') || label.includes('close') || label.includes('dismiss');
+                            }) || buttons.find(b => (b.textContent || '').trim() === '' && !!b.querySelector('svg'));
+
+                            if ($closeBtn) {
+                                $closeBtn.click();
+                            } else {
+                                document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', code: 'Escape', bubbles: true }));
+                                $modal.style.display = 'none';
+                            }
+                        }
+                        break;
                     }
                 }
             }
 
-            // 2. Hide selected sections by heading text on play.xbox.com
+            // 2. Hide selected sections safely on play.xbox.com (never hide a container with multiple sections!)
             if (hiddenSections.length > 0) {
                 const headings = document.querySelectorAll<HTMLElement>('main h2, main h3, main [role="heading"]');
                 for (const $h of headings) {
                     const txt = ($h.textContent || '').trim().toLowerCase();
-                    if (!txt) {
+                    if (!txt || txt.length > 60) {
                         continue;
                     }
                     for (const section of hiddenSections) {
                         const keywords = SECTION_HEADING_KEYWORDS[section];
-                        if (keywords && keywords.some(k => txt.includes(k))) {
-                            const $container = $h.closest<HTMLElement>('section') || $h.parentElement?.parentElement;
-                            if ($container && $container.tagName !== 'MAIN' && $container.tagName !== 'BODY') {
-                                $container.style.display = 'none';
+                        if (keywords && keywords.some(k => txt === k || txt.startsWith(k))) {
+                            // Walk up only while the ancestor still contains at most 1 section heading
+                            let $target: HTMLElement | null = $h.parentElement;
+                            while ($target && $target.parentElement && $target.parentElement.tagName !== 'MAIN' && $target.parentElement.tagName !== 'BODY') {
+                                const parentHeadings = $target.parentElement.querySelectorAll('h2, h3, [role="heading"]').length;
+                                if (parentHeadings > 1) {
+                                    break;
+                                }
+                                $target = $target.parentElement;
+                            }
+                            if ($target && $target.tagName !== 'MAIN' && $target.tagName !== 'BODY' && $target.querySelectorAll('h2, h3, [role="heading"]').length <= 1) {
+                                $target.style.display = 'none';
                             }
                             break;
                         }
@@ -669,12 +701,12 @@ function main() {
 
             // 3. Hide Friends sidebar block on play.xbox.com when Friends feature is disabled
             if (blockedFeatures.includes(BlockFeature.FRIENDS)) {
-                const friendHeadings = document.querySelectorAll<HTMLElement>('aside h2, aside h3, aside span, nav span');
+                const friendHeadings = document.querySelectorAll<HTMLElement>('aside h2, aside h3, aside span');
                 for (const $el of friendHeadings) {
                     const txt = ($el.textContent || '').trim().toLowerCase();
                     if (txt === 'amigos' || txt === 'friends') {
                         const $block = $el.closest<HTMLElement>('section') || $el.parentElement?.parentElement;
-                        if ($block && $block.tagName !== 'NAV' && $block.tagName !== 'ASIDE' && $block.tagName !== 'BODY') {
+                        if ($block && $block.tagName !== 'NAV' && $block.tagName !== 'ASIDE' && $block.tagName !== 'BODY' && $block.querySelectorAll('a[href="/"], a[href*="library"]').length === 0) {
                             $block.style.display = 'none';
                         }
                     }

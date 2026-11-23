@@ -26,8 +26,6 @@ export function addCss() {
     if (PREF_HIDE_SECTIONS.includes(UiSection.NEWS)) {
         selectorToHide.push('#BodyContent > div[class*=CarouselRow-module]');
         selectorToHide.push('section[data-testid="channel-error-container"]');
-        // play.xbox.com
-        selectorToHide.push('main section:has(a[href*="/news"]), main section:has(a[href*="news.xbox.com"])');
     }
 
     if (window.location.hostname === 'play.xbox.com') {
@@ -37,54 +35,32 @@ export function addCss() {
     // Hide BYOG section
     if (getGlobalPref(GlobalPref.UI_HIDE_SECTIONS).includes(UiSection.BOYG)) {
         selectorToHide.push('#BodyContent > div[class*=ShowcaseRow-module__container___]');
-        // play.xbox.com
-        selectorToHide.push('main section:has(a[href*="/gallery/byog"]), main section:has(a[href*="/stream-your-own"])');
     }
 
     // Hide "All games" section
     if (PREF_HIDE_SECTIONS.includes(UiSection.ALL_GAMES)) {
         selectorToHide.push('#BodyContent div[class*=AllGamesRow-module__gridContainer]');
         selectorToHide.push('#BodyContent div[class*=AllGamesRow-module__rowHeader]');
-        // play.xbox.com
-        selectorToHide.push('main section:has(a[href*="/gallery/all-games"])');
     }
 
     // Hide "Most popular" section
     if (PREF_HIDE_SECTIONS.includes(UiSection.MOST_POPULAR)) {
         selectorToHide.push('#BodyContent div[class*=HomePage-module__bottomSpacing]:has(a[href="/play/gallery/popular"])');
-        // play.xbox.com
-        selectorToHide.push('main section:has(a[href*="/gallery/popular"])');
     }
 
     // Hide "Play with touch" section
     if (PREF_HIDE_SECTIONS.includes(UiSection.TOUCH)) {
         selectorToHide.push('#BodyContent div[class*=HomePage-module__bottomSpacing]:has(a[href="/play/gallery/touch"])');
-        // play.xbox.com
-        selectorToHide.push('main section:has(a[href*="/gallery/touch"])');
     }
 
     // Hide "Recently added" section
     if (PREF_HIDE_SECTIONS.includes(UiSection.RECENTLY_ADDED)) {
         selectorToHide.push('#BodyContent div[class*=HomePage-module__bottomSpacing]:has(a[href="/play/gallery/recently-added"])');
-        // play.xbox.com
-        selectorToHide.push('main section:has(a[href*="/gallery/recently-added"])');
-    }
-
-    // Hide "Leaving soon" section (play.xbox.com)
-    if (PREF_HIDE_SECTIONS.includes(UiSection.LEAVING_SOON)) {
-        selectorToHide.push('main section:has(a[href*="/gallery/leaving-soon"])');
-    }
-
-    // Hide "Native MKB" section (play.xbox.com)
-    if (PREF_HIDE_SECTIONS.includes(UiSection.NATIVE_MKB)) {
-        selectorToHide.push('main section:has(a[href*="/gallery/mouse-and-keyboard"])');
     }
 
     // Hide "Genres section"
     if (PREF_HIDE_SECTIONS.includes(UiSection.GENRES)) {
         selectorToHide.push('#BodyContent div[class*=HomePage-module__genresRow]');
-        // play.xbox.com
-        selectorToHide.push('main section:has(a[href*="/gallery/genres"])');
     }
 
     // Hide "GamePassPromo"
