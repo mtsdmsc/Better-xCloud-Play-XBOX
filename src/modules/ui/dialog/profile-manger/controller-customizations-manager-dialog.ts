@@ -109,7 +109,9 @@ export class ControllerCustomizationsManagerDialog extends BaseProfileManagerDia
                 class: 'bx-controller-key-row',
                 _nearby: { orientation: 'horizontal' },
             },
-                CE('label', { title: buttonName }, buttonPrompt),
+                CE('label', { title: buttonName },
+                    CE('span', { class: 'bx-gp-badge', 'data-btn': buttonPrompt, title: buttonName }, buttonPrompt),
+                ),
                 $select,
             );
 

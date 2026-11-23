@@ -113,7 +113,9 @@ export class MkbMappingManagerDialog extends BaseProfileManagerDialog<MkbPresetR
                 class: 'bx-mkb-key-row',
                 _nearby: { orientation: 'horizontal' },
             },
-                CE('label', { title: buttonName }, buttonPrompt),
+                CE('label', { title: buttonName },
+                    CE('span', { class: 'bx-gp-badge', 'data-btn': buttonPrompt, title: buttonName }, buttonPrompt),
+                ),
                 $fragment,
             );
 

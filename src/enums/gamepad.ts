@@ -34,40 +34,40 @@ export enum GamepadKey {
 };
 
 export const GamepadKeyName: Record<number, [string, PrompFont]> = {
-    [GamepadKey.A]: ['A', PrompFont.A],
-    [GamepadKey.B]: ['B', PrompFont.B],
-    [GamepadKey.X]: ['X', PrompFont.X],
-    [GamepadKey.Y]: ['Y', PrompFont.Y],
+    [GamepadKey.A]: ['Botão A (Verde)', PrompFont.A],
+    [GamepadKey.B]: ['Botão B (Vermelho)', PrompFont.B],
+    [GamepadKey.X]: ['Botão X (Azul)', PrompFont.X],
+    [GamepadKey.Y]: ['Botão Y (Amarelo)', PrompFont.Y],
 
-    [GamepadKey.LB]: ['LB', PrompFont.LB],
-    [GamepadKey.RB]: ['RB', PrompFont.RB],
-    [GamepadKey.LT]: ['LT', PrompFont.LT],
-    [GamepadKey.RT]: ['RT', PrompFont.RT],
+    [GamepadKey.LB]: ['Botão Superior Esquerdo (LB)', PrompFont.LB],
+    [GamepadKey.RB]: ['Botão Superior Direito (RB)', PrompFont.RB],
+    [GamepadKey.LT]: ['Gatilho Esquerdo (LT)', PrompFont.LT],
+    [GamepadKey.RT]: ['Gatilho Direito (RT)', PrompFont.RT],
 
-    [GamepadKey.SELECT]: ['Select', PrompFont.SELECT],
-    [GamepadKey.START]: ['Start', PrompFont.START],
-    [GamepadKey.HOME]: ['Home', PrompFont.HOME],
+    [GamepadKey.SELECT]: ['Botão Visualizar / View (Select)', PrompFont.SELECT],
+    [GamepadKey.START]: ['Botão Menu (Start)', PrompFont.START],
+    [GamepadKey.HOME]: ['Botão Xbox (Guia)', PrompFont.HOME],
 
-    [GamepadKey.UP]: ['D-Pad Up', PrompFont.UP],
-    [GamepadKey.DOWN]: ['D-Pad Down', PrompFont.DOWN],
-    [GamepadKey.LEFT]: ['D-Pad Left', PrompFont.LEFT],
-    [GamepadKey.RIGHT]: ['D-Pad Right', PrompFont.RIGHT],
+    [GamepadKey.UP]: ['Direcional Cima (D-Pad ↑)', PrompFont.UP],
+    [GamepadKey.DOWN]: ['Direcional Baixo (D-Pad ↓)', PrompFont.DOWN],
+    [GamepadKey.LEFT]: ['Direcional Esquerda (D-Pad ←)', PrompFont.LEFT],
+    [GamepadKey.RIGHT]: ['Direcional Direita (D-Pad →)', PrompFont.RIGHT],
 
-    [GamepadKey.L3]: ['L3', PrompFont.L3],
-    [GamepadKey.LS_UP]: ['Left Stick Up', PrompFont.LS_UP],
-    [GamepadKey.LS_DOWN]: ['Left Stick Down', PrompFont.LS_DOWN],
-    [GamepadKey.LS_LEFT]: ['Left Stick Left', PrompFont.LS_LEFT],
-    [GamepadKey.LS_RIGHT]: ['Left Stick Right', PrompFont.LS_RIGHT],
-    [GamepadKey.LS]: ['Left Stick', PrompFont.LS],
+    [GamepadKey.L3]: ['Clique do Analógico Esquerdo (L3)', PrompFont.L3],
+    [GamepadKey.LS_UP]: ['Analógico Esquerdo Cima (LS ↑)', PrompFont.LS_UP],
+    [GamepadKey.LS_DOWN]: ['Analógico Esquerdo Baixo (LS ↓)', PrompFont.LS_DOWN],
+    [GamepadKey.LS_LEFT]: ['Analógico Esquerdo Esquerda (LS ←)', PrompFont.LS_LEFT],
+    [GamepadKey.LS_RIGHT]: ['Analógico Esquerdo Direita (LS →)', PrompFont.LS_RIGHT],
+    [GamepadKey.LS]: ['Analógico Esquerdo (LS)', PrompFont.LS],
 
-    [GamepadKey.R3]: ['R3', PrompFont.R3],
-    [GamepadKey.RS_UP]: ['Right Stick Up', PrompFont.RS_UP],
-    [GamepadKey.RS_DOWN]: ['Right Stick Down', PrompFont.RS_DOWN],
-    [GamepadKey.RS_LEFT]: ['Right Stick Left', PrompFont.RS_LEFT],
-    [GamepadKey.RS_RIGHT]: ['Right Stick Right', PrompFont.RS_RIGHT],
-    [GamepadKey.RS]: ['Right Stick', PrompFont.RS],
+    [GamepadKey.R3]: ['Clique do Analógico Direito (R3)', PrompFont.R3],
+    [GamepadKey.RS_UP]: ['Analógico Direito Cima (RS ↑)', PrompFont.RS_UP],
+    [GamepadKey.RS_DOWN]: ['Analógico Direito Baixo (RS ↓)', PrompFont.RS_DOWN],
+    [GamepadKey.RS_LEFT]: ['Analógico Direito Esquerda (RS ←)', PrompFont.RS_LEFT],
+    [GamepadKey.RS_RIGHT]: ['Analógico Direito Direita (RS →)', PrompFont.RS_RIGHT],
+    [GamepadKey.RS]: ['Analógico Direito (RS)', PrompFont.RS],
 
-    [GamepadKey.SHARE]: ['Screenshot', PrompFont.SHARE],
+    [GamepadKey.SHARE]: ['Botão Compartilhar / Captura de Tela (Share)', PrompFont.SHARE],
 };
 
 

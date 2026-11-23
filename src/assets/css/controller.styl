@@ -20,25 +20,96 @@
 
 }
 
+.bx-gp-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 34px;
+    height: 30px;
+    padding: 0 7px;
+    border-radius: 7px;
+    background: #2b2f36;
+    border: 1px solid #5a606b;
+    color: #fff;
+    font-family: var(--bx-normal-font);
+    font-size: 13px;
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: 0.2px;
+    cursor: help;
+    user-select: none;
+    box-sizing: border-box;
+
+    &[data-btn="A"] {
+        border-radius: 50%;
+        width: 30px;
+        min-width: 30px;
+        background: #107c10;
+        border-color: #2bc22b;
+    }
+
+    &[data-btn="B"] {
+        border-radius: 50%;
+        width: 30px;
+        min-width: 30px;
+        background: #b91c1c;
+        border-color: #ef4444;
+    }
+
+    &[data-btn="X"] {
+        border-radius: 50%;
+        width: 30px;
+        min-width: 30px;
+        background: #1d4ed8;
+        border-color: #60a5fa;
+    }
+
+    &[data-btn="Y"] {
+        border-radius: 50%;
+        width: 30px;
+        min-width: 30px;
+        background: #ca8a04;
+        border-color: #facc15;
+        color: #111;
+    }
+
+    &[data-btn="Xbox"] {
+        background: #14532d;
+        border-color: #22c55e;
+        font-size: 11px;
+    }
+}
+
+.bx-gp-plus {
+    font-family: var(--bx-normal-font);
+    font-size: 13px;
+    font-weight: 700;
+    color: #9ca3af;
+    margin: 0 4px;
+}
+
 .bx-controller-key-row {
     display: flex;
     align-items: stretch;
 
     > label {
         margin-bottom: 0;
-        font-family: var(--bx-promptfont-font);
-        font-size: 32px;
+        font-family: var(--bx-normal-font);
+        font-size: 15px;
         text-align: center;
-        min-width: 50px;
+        min-width: 68px;
         flex-shrink: 0;
         display: flex;
+        align-items: center;
+        justify-content: flex-end;
         align-self: center;
 
         &::after {
             content: '❯';
-            margin: 0 12px;
-            font-size: 16px;
+            margin: 0 10px;
+            font-size: 14px;
             align-self: center;
+            color: #9ca3af;
         }
     }
 
@@ -50,8 +121,9 @@
         }
 
         label {
-            font-family: var(--bx-promptfont-font), var(--bx-normal-font);
-            font-size: 32px;
+            font-family: var(--bx-normal-font);
+            font-size: 16px;
+            font-weight: 700;
             text-align: center;
             margin-bottom: 6px;
             height: 40px;
@@ -61,7 +133,9 @@
 
     &:hover {
         > label {
-            color: #ffe64b;
+            .bx-gp-badge {
+                box-shadow: 0 0 0 2px #ffe64b;
+            }
 
             &::after {
                 color: #fff;
@@ -77,13 +151,14 @@
     margin-top: 10px;
 
     span {
-        font-family: var(--bx-promptfont);
-        font-size: 24px;
+        font-family: var(--bx-normal-font);
+        font-size: 13px;
+        font-weight: 700;
         border-radius: 6px;
         background: #131313;
         color: #fff;
         display: inline-block;
-        padding: 2px;
+        padding: 4px 6px;
         text-align: center;
     }
 }

@@ -119,6 +119,28 @@ export function patchRtcPeerConnection() {
         return nativeSetLocalDescription.apply(this, arguments);
     };
 
+    const nativeSetRemoteDescription = RTCPeerConnection.prototype.setRemoteDescription;
+    RTCPeerConnection.prototype.setRemoteDescription = function(description: RTCSessionDescriptionInit): Promise<void> {
+        const originalSdp = description?.sdp;
+        if (description && originalSdp) {
+            try {
+                const hasCustomCap = maxVideoBitrate > 0 && maxVideoBitrate < maxVideoBitrateDef.max;
+                const kbps = hasCustomCap ? Math.round(maxVideoBitrate / 1000) : 30000;
+                const patchedSdp = hasCustomCap
+                    ? patchSdpBitrateHints(patchSdpBitrate(originalSdp, kbps), kbps)
+                    : patchSdpBitrateHints(originalSdp, kbps);
+                const patchedDesc = { type: description.type, sdp: patchedSdp };
+                // Fall back cleanly to original SDP if browser rejects any hint
+                return nativeSetRemoteDescription.call(this, patchedDesc).catch(() => nativeSetRemoteDescription.call(this, description));
+            } catch (e) {
+                BxLogger.error('setRemoteDescription', e);
+            }
+        }
+
+        // @ts-ignore
+        return nativeSetRemoteDescription.apply(this, arguments);
+    };
+
     const OrgRTCPeerConnection = window.RTCPeerConnection;
     // @ts-ignore
     window.RTCPeerConnection = function() {

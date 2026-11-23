@@ -70,14 +70,16 @@ export class ControllerShortcutsManagerDialog extends BaseProfileManagerDialog<C
             }
         };
 
+        const homeName = GamepadKeyName[GamepadKey.HOME][0];
         const fragment = document.createDocumentFragment();
         fragment.appendChild(CE('p', { class: 'bx-shortcut-note' },
-            CE('span', { class: 'bx-prompt' }, PrompFont.HOME),
+            CE('span', { class: 'bx-gp-badge', 'data-btn': PrompFont.HOME, title: homeName }, PrompFont.HOME),
             ': ' + t('controller-shortcuts-xbox-note'),
         ));
 
         for (const button of this.BUTTONS_ORDER) {
-            const prompt = GamepadKeyName[button][1];
+            const [buttonName, prompt] = GamepadKeyName[button];
+            const comboTooltip = `${homeName} + ${buttonName}`;
 
             const $row = CE('div', {
                 class: 'bx-shortcut-row',
@@ -85,7 +87,11 @@ export class ControllerShortcutsManagerDialog extends BaseProfileManagerDialog<C
                     orientation: 'horizontal',
                 },
             });
-            const $label = CE('label', { class: 'bx-prompt' }, `${PrompFont.HOME}${prompt}`);
+            const $label = CE('label', { class: 'bx-prompt bx-shortcut-combo', title: comboTooltip },
+                CE('span', { class: 'bx-gp-badge', 'data-btn': PrompFont.HOME, title: homeName }, PrompFont.HOME),
+                CE('span', { class: 'bx-gp-plus' }, '+'),
+                CE('span', { class: 'bx-gp-badge', 'data-btn': prompt, title: buttonName }, prompt),
+            );
 
             const $select = BxSelectElement.create($baseSelect.cloneNode(true) as HTMLSelectElement);
             $select.dataset.button = button.toString();
