@@ -289,7 +289,7 @@ export class SettingsDialog extends NavigationDialog {
         items: [
             GlobalPref.GAME_BAR_POSITION,
         ],
-    }, {
+    }, window.location.hostname !== 'play.xbox.com' && {
         group: 'loading-screen',
         label: t('loading-screen'),
         items: [

@@ -69,6 +69,9 @@ export class XcloudInterceptor {
         const obj = await response.clone().json();
 
         // Store xCloud token
+        if (obj.gsToken) {
+            STATES.gsToken = obj.gsToken;
+        }
         if (isFullVersion()) {
             RemotePlayManager.getInstance()?.setXcloudToken(obj.gsToken);
         }

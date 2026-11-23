@@ -3,6 +3,7 @@ import { createButton, ButtonStyle, CE } from "@utils/html";
 import { BaseGameBarAction } from "./base-action";
 import { SoundShortcut, SpeakerState } from "../shortcuts/sound-shortcut";
 import { BxEventBus } from "@/utils/bx-event-bus";
+import { t } from "@/utils/translation";
 
 
 export class SpeakerAction extends BaseGameBarAction {
@@ -14,12 +15,14 @@ export class SpeakerAction extends BaseGameBarAction {
         const $btnEnable = createButton({
             style: ButtonStyle.GHOST,
             icon: BxIcon.AUDIO,
+            title: `${t('sound')}: ${t('unmuted')}`,
             onClick: this.onClick,
         });
 
         const $btnMuted = createButton({
             style: ButtonStyle.GHOST,
             icon: BxIcon.SPEAKER_MUTED,
+            title: `${t('sound')}: ${t('muted')}`,
             onClick: this.onClick,
             classes: ['bx-activated'],
         });

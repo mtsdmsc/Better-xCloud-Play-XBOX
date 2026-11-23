@@ -531,8 +531,8 @@ function main() {
 
     // Global desktop keyboard shortcuts:
     // - Alt + Shift + X: toggle Better xCloud Settings
-    // - Alt + Shift + S: toggle Stream Stats bar
-    window.addEventListener('keydown', (e: KeyboardEvent) => {
+    // - Alt + Shift + E: toggle Stream Stats bar (avoids Edge's Alt+Shift+S Visual Search)
+    const handleGlobalShortcuts = (e: KeyboardEvent) => {
         if (!e.altKey || !e.shiftKey || e.ctrlKey || e.metaKey) {
             return;
         }
@@ -544,20 +544,46 @@ function main() {
         if (e.code === 'KeyX') {
             e.preventDefault();
             e.stopPropagation();
+            e.stopImmediatePropagation();
 
             const dialogManager = NavigationDialogManager.getInstance();
             const settingsDialog = SettingsDialog.getInstance();
             if (dialogManager.isShowing()) {
                 dialogManager.hide();
             } else {
+                if (document.pointerLockElement) {
+                    try { document.exitPointerLock(); } catch (err) {}
+                }
                 settingsDialog.show();
             }
-        } else if (e.code === 'KeyS') {
+        } else if (e.code === 'KeyE') {
             e.preventDefault();
             e.stopPropagation();
+            e.stopImmediatePropagation();
             StreamStats.getInstance().toggle();
         }
-    }, true);
+    };
+    window.addEventListener('keydown', handleGlobalShortcuts, true);
+
+    // Keep Better xCloud overlays visible inside the Fullscreen top-layer when play.xbox.com enters/exits fullscreen
+    document.addEventListener('fullscreenchange', () => {
+        const host = document.fullscreenElement || document.documentElement;
+        const ids = ['bx-stream-stats', 'bx-game-bar'];
+        for (const id of ids) {
+            const $el = document.getElementById(id);
+            if ($el && $el.parentElement !== host) {
+                host.appendChild($el);
+            }
+        }
+        const $overlay = document.querySelector<HTMLElement>('.bx-navigation-dialog-overlay');
+        const $dialog = document.querySelector<HTMLElement>('.bx-navigation-dialog');
+        if ($overlay && $overlay.parentElement !== host) {
+            host.appendChild($overlay);
+        }
+        if ($dialog && $dialog.parentElement !== host) {
+            host.appendChild($dialog);
+        }
+    });
 
     // On play.xbox.com, releasing Pointer Lock via Esc/F9 can trigger Xbox's side Guide panel right after exit.
     // Swallow Escape briefly right after pointer lock exits so user can freely click HUD/Stats/Game Bar.
@@ -579,6 +605,97 @@ function main() {
                 e.stopPropagation();
             }
         }, true);
+
+        // play.xbox.com: auto-dismiss post-stream feedback dialog ("Como foi sua sessão?" / "How was your session?")
+        // and hide selected Home sections & blocked social panels
+        const disableFeedbackDialog = getGlobalPref(GlobalPref.UI_DISABLE_FEEDBACK_DIALOG);
+        const hiddenSections = getGlobalPref(GlobalPref.UI_HIDE_SECTIONS);
+        const blockedFeatures = getGlobalPref(GlobalPref.BLOCK_FEATURES);
+
+        const SECTION_HEADING_KEYWORDS: Partial<Record<UiSection, string[]>> = {
+            [UiSection.NEWS]: ['novidades', 'news'],
+            [UiSection.FRIENDS]: ['jogue com amigos', 'play with friends'],
+            [UiSection.NATIVE_MKB]: ['mouse e teclado', 'mouse & keyboard', 'mouse and keyboard'],
+            [UiSection.TOUCH]: ['jogue com toque', 'play with touch'],
+            [UiSection.MOST_POPULAR]: ['mais populares', 'most popular'],
+            [UiSection.BOYG]: ['transmita seu próprio jogo', 'jogue jogos que você possui', 'stream your own game'],
+            [UiSection.RECENTLY_ADDED]: ['adicionados recentemente', 'recently added'],
+            [UiSection.LEAVING_SOON]: ['saindo em breve', 'leaving soon'],
+            [UiSection.GENRES]: ['gêneros', 'generos', 'genres'],
+            [UiSection.ALL_GAMES]: ['todos os jogos', 'all games'],
+        };
+
+        const applyNewSiteDomFilters = () => {
+            // 1. Auto-close post-stream feedback modal
+            if (disableFeedbackDialog) {
+                const dialogs = document.querySelectorAll<HTMLElement>('[role="dialog"]');
+                for (const $dlg of dialogs) {
+                    if ($dlg.closest('.bx-navigation-dialog')) {
+                        continue;
+                    }
+                    const txt = ($dlg.textContent || '').toLowerCase();
+                    if (txt.includes('como foi sua sessão') || txt.includes('how was your session') || txt.includes('escrever comentários') || txt.includes('write feedback')) {
+                        const $closeBtn = $dlg.querySelector<HTMLElement>('button[aria-label*="Fechar"], button[aria-label*="Close"]');
+                        if ($closeBtn) {
+                            $closeBtn.click();
+                        } else {
+                            document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', code: 'Escape', bubbles: true }));
+                            $dlg.style.display = 'none';
+                        }
+                    }
+                }
+            }
+
+            // 2. Hide selected sections by heading text on play.xbox.com
+            if (hiddenSections.length > 0) {
+                const headings = document.querySelectorAll<HTMLElement>('main h2, main h3, main [role="heading"]');
+                for (const $h of headings) {
+                    const txt = ($h.textContent || '').trim().toLowerCase();
+                    if (!txt) {
+                        continue;
+                    }
+                    for (const section of hiddenSections) {
+                        const keywords = SECTION_HEADING_KEYWORDS[section];
+                        if (keywords && keywords.some(k => txt.includes(k))) {
+                            const $container = $h.closest<HTMLElement>('section') || $h.parentElement?.parentElement;
+                            if ($container && $container.tagName !== 'MAIN' && $container.tagName !== 'BODY') {
+                                $container.style.display = 'none';
+                            }
+                            break;
+                        }
+                    }
+                }
+            }
+
+            // 3. Hide Friends sidebar block on play.xbox.com when Friends feature is disabled
+            if (blockedFeatures.includes(BlockFeature.FRIENDS)) {
+                const friendHeadings = document.querySelectorAll<HTMLElement>('aside h2, aside h3, aside span, nav span');
+                for (const $el of friendHeadings) {
+                    const txt = ($el.textContent || '').trim().toLowerCase();
+                    if (txt === 'amigos' || txt === 'friends') {
+                        const $block = $el.closest<HTMLElement>('section') || $el.parentElement?.parentElement;
+                        if ($block && $block.tagName !== 'NAV' && $block.tagName !== 'ASIDE' && $block.tagName !== 'BODY') {
+                            $block.style.display = 'none';
+                        }
+                    }
+                }
+            }
+        };
+
+        if (disableFeedbackDialog || hiddenSections.length > 0 || blockedFeatures.includes(BlockFeature.FRIENDS)) {
+            let filterTimer: number | null = null;
+            const scheduleFilters = () => {
+                if (filterTimer) {
+                    return;
+                }
+                filterTimer = window.setTimeout(() => {
+                    filterTimer = null;
+                    applyNewSiteDomFilters();
+                }, 250);
+            };
+            new MutationObserver(scheduleFilters).observe(document.documentElement, { childList: true, subtree: true });
+            window.setTimeout(applyNewSiteDomFilters, 1500);
+        }
     }
 
     // Show a toast when connecting/disconecting controller

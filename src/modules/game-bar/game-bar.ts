@@ -78,7 +78,7 @@ export class GameBar {
         // Quick Stats & Settings buttons directly on Game Bar (especially useful on play.xbox.com)
         const $btnStats = CE('button', {
             class: 'bx-button bx-game-bar-quick-btn',
-            title: `${t('stream-stats')} (Alt + Shift + S)`,
+            title: `${t('stream-stats')} (Alt + Shift + E)`,
             _on: {
                 click: () => {
                     StreamStats.getInstance().toggle();
@@ -151,8 +151,9 @@ export class GameBar {
     }
 
     enable() {
-        if (!this.$gameBar.isConnected) {
-            document.documentElement.appendChild(this.$gameBar);
+        const host = document.fullscreenElement || document.documentElement;
+        if (this.$gameBar.parentElement !== host) {
+            host.appendChild(this.$gameBar);
         }
         this.$gameBar.classList.remove('bx-gone');
     }

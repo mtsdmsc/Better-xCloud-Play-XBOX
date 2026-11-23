@@ -423,11 +423,12 @@ export class NavigationDialogManager {
         // Unmount current dialog
         this.unmountCurrentDialog();
 
-        if (!this.$overlay.isConnected) {
-            document.documentElement.appendChild(this.$overlay);
+        const host = document.fullscreenElement || document.documentElement;
+        if (this.$overlay.parentElement !== host) {
+            host.appendChild(this.$overlay);
         }
-        if (!this.$container.isConnected) {
-            document.documentElement.appendChild(this.$container);
+        if (this.$container.parentElement !== host) {
+            host.appendChild(this.$container);
         }
 
         // Add to dialogs stack

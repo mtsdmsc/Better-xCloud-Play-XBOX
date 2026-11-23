@@ -120,6 +120,21 @@ export function patchRtcPeerConnection() {
         const conn = new OrgRTCPeerConnection();
         STATES.currentStream.peerConnection = conn;
 
+        // Reduce WebRTC video/audio playout latency on Chromium/Edge
+        conn.addEventListener('track', (e: RTCTrackEvent) => {
+            try {
+                const receiver = e.receiver as any;
+                if (receiver) {
+                    if ('jitterBufferTarget' in receiver) {
+                        receiver.jitterBufferTarget = 0;
+                    }
+                    if ('playoutDelayHint' in receiver) {
+                        receiver.playoutDelayHint = 0;
+                    }
+                }
+            } catch (err) {}
+        });
+
         conn.addEventListener('connectionstatechange', e => {
             BxLogger.info('connectionstatechange', conn.connectionState);
         });

@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Better xCloud (Desktop - play.xbox.com)
 // @namespace    https://github.com/mtsdmsc/Better-xCloud-Play-XBOX
-// @version      1.2.0
+// @version      1.2.1
 // @description  Improve Xbox Cloud Gaming (xCloud) on Desktop browsers at play.xbox.com and xbox.com/play (Port by Mateus Damasceno / Original by redphx)
 // @author       redphx, Mateus Damasceno (mtsdmsc)
 // @license      MIT
@@ -199,7 +199,7 @@ class UserAgent {
   } catch (e) {}
  }
 }
-var SCRIPT_VERSION = "1.2.0", SCRIPT_VARIANT = "full", AppInterface = window.AppInterface;
+var SCRIPT_VERSION = "1.2.1", SCRIPT_VARIANT = "full", AppInterface = window.AppInterface;
 UserAgent.init();
 var userAgent = window.navigator.userAgent.toLowerCase(), isTv = userAgent.includes("smart-tv") || userAgent.includes("smarttv") || /\baft.*\b/.test(userAgent), isVr = window.navigator.userAgent.includes("VR") && window.navigator.userAgent.includes("OculusBrowser"), browserHasTouchSupport = "ontouchstart" in window || navigator.maxTouchPoints > 0, userAgentHasTouchSupport = !isTv && !isVr && browserHasTouchSupport, STATES = {
  supportedRegion: !0,
@@ -3563,7 +3563,9 @@ class StreamStats {
  }
  async start(glancing = !1) {
   if (this.isRunning || !this.isHidden() || glancing && this.isGlancing()) return;
-  if (this.isRunning = !0, !this.$container.isConnected) document.documentElement.appendChild(this.$container);
+  this.isRunning = !0;
+  let host = document.fullscreenElement || document.documentElement;
+  if (this.$container.parentElement !== host) host.appendChild(this.$container);
   this.intervalId && clearInterval(this.intervalId), await this.update(!0), this.$container.classList.remove("bx-gone"), this.$container.dataset.display = glancing ? "glancing" : "fixed", this.intervalId = window.setInterval(this.update, this.REFRESH_INTERVAL);
  }
  async stop(glancing = !1) {
@@ -5332,8 +5334,10 @@ class NavigationDialogManager {
   this.gamepadHoldingIntervalId && window.clearInterval(this.gamepadHoldingIntervalId), this.gamepadHoldingIntervalId = null;
  }
  show(dialog, configs = {}, clearStack = !1) {
-  if (this.clearGamepadHoldingInterval(), BxEventBus.Script.emit("dialog.shown", {}), window.BX_EXPOSED.disableGamepadPolling = !0, document.body.classList.add("bx-no-scroll"), this.unmountCurrentDialog(), !this.$overlay.isConnected) document.documentElement.appendChild(this.$overlay);
-  if (!this.$container.isConnected) document.documentElement.appendChild(this.$container);
+  this.clearGamepadHoldingInterval(), BxEventBus.Script.emit("dialog.shown", {}), window.BX_EXPOSED.disableGamepadPolling = !0, document.body.classList.add("bx-no-scroll"), this.unmountCurrentDialog();
+  let host = document.fullscreenElement || document.documentElement;
+  if (this.$overlay.parentElement !== host) host.appendChild(this.$overlay);
+  if (this.$container.parentElement !== host) host.appendChild(this.$container);
   this.dialogsStack.push(dialog), this.dialog = dialog, dialog.onBeforeMount(configs), this.$container.appendChild(dialog.getContent()), dialog.onMounted(configs), this.$overlay.classList.remove("bx-gone"), this.$overlay.classList.toggle("bx-invisible", !dialog.isOverlayVisible()), this.$container.classList.remove("bx-gone"), this.$container.addEventListener("keydown", this), this.startGamepadPolling();
  }
  hide() {
@@ -7896,7 +7900,7 @@ class SettingsDialog extends NavigationDialog {
   items: [
    "gameBar.position"
   ]
- }, {
+ }, window.location.hostname !== "play.xbox.com" && {
   group: "loading-screen",
   label: t("loading-screen"),
   items: [
@@ -9768,6 +9772,7 @@ class XcloudInterceptor {
   }
   if (response.status !== 200) return !STATES.serverRegions && BxEventBus.Script.emit("xcloud.server", { status: "unavailable" }), response;
   let obj = await response.clone().json();
+  if (obj.gsToken) STATES.gsToken = obj.gsToken;
   RemotePlayManager.getInstance()?.setXcloudToken(obj.gsToken);
   let serverRegex = /\/\/(\w+)\./, serverExtra = XcloudInterceptor.SERVER_EXTRA_INFO, serverOrder = Object.keys(serverExtra), region;
   for (region of obj.offeringSettings.regions) {
@@ -10049,7 +10054,14 @@ function addCss() {
  if (PREF_HIDE_SECTIONS.includes("native-mkb")) selectorToHide.push('main section:has(a[href*="/gallery/mouse-and-keyboard"])');
  if (PREF_HIDE_SECTIONS.includes("genres")) selectorToHide.push("#BodyContent div[class*=HomePage-module__genresRow]"), selectorToHide.push('main section:has(a[href*="/gallery/genres"])');
  if (containsAll(PREF_HIDE_SECTIONS, ["recently-added", "leaving-soon", "genres", "all-games"])) selectorToHide.push("#BodyContent div[class*=GamePassPromoSection-module__container]");
- if (getGlobalPref("block.features").includes("friends")) selectorToHide.push("#gamepass-dialog-root div[class^=AchievementsPreview-module__container] + button[class*=HomeLandingPage-module__button]");
+ let PREF_BLOCK_FEATURES = getGlobalPref("block.features");
+ if (PREF_BLOCK_FEATURES.includes("friends")) {
+  if (selectorToHide.push("#gamepass-dialog-root div[class^=AchievementsPreview-module__container] + button[class*=HomeLandingPage-module__button]"), window.location.hostname === "play.xbox.com") selectorToHide.push('aside [aria-label*="Amigos"], aside [aria-label*="Friends"], #nav-friends, #title-bar-friends');
+ }
+ if (window.location.hostname === "play.xbox.com") {
+  if (PREF_BLOCK_FEATURES.includes("notifications-invites") || PREF_BLOCK_FEATURES.includes("notifications-achievements")) selectorToHide.push("#title-bar-notifications, #nav-notifications");
+  if (PREF_BLOCK_FEATURES.includes("chat")) selectorToHide.push('#title-bar-chat, #nav-chat, [aria-label*="Chat"], [aria-label*="Bate-papo"]');
+ }
  if (selectorToHide) css += selectorToHide.join(",") + "{ display: none; }";
  if (getGlobalPref("ui.theme") === "dark-oled") css += 'body[data-theme=dark]{--gds-containerSolidAppBackground:#000 !important}div[aria-hidden=true][class^=BackgroundImageAbsoluteContainer][class*=ProductDetailPage-module__backgroundImageGradient]:after{background:radial-gradient(ellipse 100% 100% at 50% 0,rgba(21,21,23,0.549) 0,rgba(26,27,30,0.651) 32%,#000 100%) !important}a[href="/play/gallery/all-games"][class*=AllGamesRow-module__seeAllCloudGames]{background:none !important}';
  if (getGlobalPref("ui.reduceAnimations")) css += "div[class^=GameCard-module__gameTitleInnerWrapper],div[class^=ScrollArrows-module],div[class^=ContextMenu-module__][class*=Dropdown-module__dropdownWrapper]{animation:none !important;transition:none !important}";
@@ -10416,7 +10428,15 @@ function patchRtcPeerConnection() {
  let OrgRTCPeerConnection = window.RTCPeerConnection;
  window.RTCPeerConnection = function() {
   let conn = new OrgRTCPeerConnection;
-  return STATES.currentStream.peerConnection = conn, conn.addEventListener("connectionstatechange", (e) => {
+  return STATES.currentStream.peerConnection = conn, conn.addEventListener("track", (e) => {
+   try {
+    let receiver = e.receiver;
+    if (receiver) {
+     if ("jitterBufferTarget" in receiver) receiver.jitterBufferTarget = 0;
+     if ("playoutDelayHint" in receiver) receiver.playoutDelayHint = 0;
+    }
+   } catch (err) {}
+  }), conn.addEventListener("connectionstatechange", (e) => {
    BxLogger.info("connectionstatechange", conn.connectionState);
   }), conn;
  };
@@ -10564,11 +10584,13 @@ class MicrophoneAction extends BaseGameBarAction {
   let $btnDefault = createButton({
    style: 8,
    icon: BxIcon.MICROPHONE,
+   title: `${t("microphone")}: ${t("unmuted")}`,
    onClick: this.onClick,
    classes: ["bx-activated"]
   }), $btnMuted = createButton({
    style: 8,
    icon: BxIcon.MICROPHONE_MUTED,
+   title: `${t("microphone")}: ${t("muted")}`,
    onClick: this.onClick
   });
   this.$content = CE("div", !1, $btnMuted, $btnDefault), BxEventBus.Stream.on("microphone.state.changed", (payload) => {
@@ -10592,6 +10614,7 @@ class TrueAchievementsAction extends BaseGameBarAction {
   this.$content = createButton({
    style: 8,
    icon: BxIcon.TRUE_ACHIEVEMENTS,
+   title: t("true-achievements"),
    onClick: this.onClick
   });
  }
@@ -10606,10 +10629,12 @@ class SpeakerAction extends BaseGameBarAction {
   let $btnEnable = createButton({
    style: 8,
    icon: BxIcon.AUDIO,
+   title: `${t("sound")}: ${t("unmuted")}`,
    onClick: this.onClick
   }), $btnMuted = createButton({
    style: 8,
    icon: BxIcon.SPEAKER_MUTED,
+   title: `${t("sound")}: ${t("muted")}`,
    onClick: this.onClick,
    classes: ["bx-activated"]
   });
@@ -10632,10 +10657,12 @@ class RendererAction extends BaseGameBarAction {
   let $btnDefault = createButton({
    style: 8,
    icon: BxIcon.EYE,
+   title: `${t("video")}: ${t("hide")}`,
    onClick: this.onClick
   }), $btnActivated = createButton({
    style: 8,
    icon: BxIcon.EYE_SLASH,
+   title: `${t("video")}: ${t("show")}`,
    onClick: this.onClick,
    classes: ["bx-activated"]
   });
@@ -10679,7 +10706,7 @@ class GameBar {
    $container.appendChild(action.render());
   let $btnStats = CE("button", {
    class: "bx-button bx-game-bar-quick-btn",
-   title: `${t("stream-stats")} (Alt + Shift + S)`,
+   title: `${t("stream-stats")} (Alt + Shift + E)`,
    _on: {
     click: () => {
      StreamStats.getInstance().toggle(), BxEventBus.Stream.emit("gameBar.activated", {});
@@ -10714,7 +10741,8 @@ class GameBar {
   this.timeoutId && clearTimeout(this.timeoutId), this.timeoutId = null;
  };
  enable() {
-  if (!this.$gameBar.isConnected) document.documentElement.appendChild(this.$gameBar);
+  let host = document.fullscreenElement || document.documentElement;
+  if (this.$gameBar.parentElement !== host) host.appendChild(this.$gameBar);
   this.$gameBar.classList.remove("bx-gone");
  }
  disable() {
@@ -10784,9 +10812,9 @@ class GameTile {
  static timeoutId;
  static async showWaitTime($elm, productId) {
   if ($elm.hasWaitTime) return;
-  $elm.hasWaitTime = !0;
   let totalWaitTime, api = XcloudApi.getInstance(), info = await api.getTitleInfo(productId);
-  if (info) {
+  if (!info) return;
+  if ($elm.hasWaitTime = !0, info.titleId) {
    let waitTime = await api.getWaitTime(info.titleId);
    if (waitTime) totalWaitTime = waitTime.estimatedAllocationTimeInSeconds;
   }
@@ -10818,7 +10846,9 @@ class GameTile {
   return productId;
  }
  static findProductIdFromHref($elm) {
-  let href = $elm.getAttribute("href") || "", match = href.match(/\/(?:games|launch)\/[^/?#]+\/([A-Za-z0-9]{12})(?:[/?#]|$)/i) || href.match(/\/(?:games|launch)\/([A-Za-z0-9]{12})(?:[/?#]|$)/i);
+  let dataId = $elm.dataset.productId || $elm.getAttribute("data-product-id");
+  if (dataId && /^[A-Za-z0-9]{12}$/.test(dataId)) return dataId.toUpperCase();
+  let href = $elm.getAttribute("href") || "", match = href.match(/\/(?:games|launch|product|products)\/[^/?#]+\/([A-Za-z0-9]{12})(?:[/?#]|$)/i) || href.match(/\/(?:games|launch|product|products)\/([A-Za-z0-9]{12})(?:[/?#]|$)/i) || href.match(/\/([A-Za-z0-9]{12})(?:[/?#]|$)/);
   return match ? match[1].toUpperCase() : null;
  }
  static setup() {
@@ -10826,7 +10856,7 @@ class GameTile {
    let onCardInteract = (e) => {
     let target = e.target;
     if (!target || !target.closest) return;
-    let $card = target.closest('a[href*="/games/"], a[href*="/launch/"]');
+    let $card = target.closest('a[href*="/games/"], a[href*="/launch/"], a[href*="/product/"], a[href*="/products/"], [data-product-id]');
     if (!$card || $card.hasWaitTime) return;
     if (!$card.querySelector("img")) return;
     let productId = GameTile.findProductIdFromHref($card);
@@ -11346,17 +11376,33 @@ function main() {
  if (addCss(), StreamStatsCollector.setupEvents(), StreamBadges.setupEvents(), StreamStats.setupEvents(), WebGPUPlayer.prepare(), STATES.userAgent.capabilities.touch && TouchController.updateCustomList(), DeviceVibrationManager.getInstance(), BX_FLAGS.CheckForUpdate && checkForUpdate(), !IS_NEW_SITE) Patcher.init();
  if (disablePwa(), getGlobalPref("touchController.mode") === "all") TouchController.setup();
  if (AppInterface && (getGlobalPref("mkb.enabled") || getGlobalPref("nativeMkb.mode") === "on")) STATES.pointerServerPort = AppInterface.startPointerServer() || 9269, BxLogger.info("startPointerServer", "Port", STATES.pointerServerPort.toString());
- if (getGlobalPref("ui.gameCard.waitTime.show") && GameTile.setup(), EmulatedMkbHandler.setupEvents(), window.addEventListener("keydown", (e) => {
+ getGlobalPref("ui.gameCard.waitTime.show") && GameTile.setup(), EmulatedMkbHandler.setupEvents();
+ let handleGlobalShortcuts = (e) => {
   if (!e.altKey || !e.shiftKey || e.ctrlKey || e.metaKey) return;
   let active = document.activeElement;
   if (active && (active.tagName === "INPUT" || active.tagName === "TEXTAREA" || active.isContentEditable)) return;
   if (e.code === "KeyX") {
-   e.preventDefault(), e.stopPropagation();
+   e.preventDefault(), e.stopPropagation(), e.stopImmediatePropagation();
    let dialogManager = NavigationDialogManager.getInstance(), settingsDialog = SettingsDialog.getInstance();
    if (dialogManager.isShowing()) dialogManager.hide();
-   else settingsDialog.show();
-  } else if (e.code === "KeyS") e.preventDefault(), e.stopPropagation(), StreamStats.getInstance().toggle();
- }, !0), IS_NEW_SITE) {
+   else {
+    if (document.pointerLockElement) try {
+      document.exitPointerLock();
+     } catch (err) {}
+    settingsDialog.show();
+   }
+  } else if (e.code === "KeyE") e.preventDefault(), e.stopPropagation(), e.stopImmediatePropagation(), StreamStats.getInstance().toggle();
+ };
+ if (window.addEventListener("keydown", handleGlobalShortcuts, !0), document.addEventListener("fullscreenchange", () => {
+  let host = document.fullscreenElement || document.documentElement, ids = ["bx-stream-stats", "bx-game-bar"];
+  for (let id of ids) {
+   let $el = document.getElementById(id);
+   if ($el && $el.parentElement !== host) host.appendChild($el);
+  }
+  let $overlay = document.querySelector(".bx-navigation-dialog-overlay"), $dialog = document.querySelector(".bx-navigation-dialog");
+  if ($overlay && $overlay.parentElement !== host) host.appendChild($overlay);
+  if ($dialog && $dialog.parentElement !== host) host.appendChild($dialog);
+ }), IS_NEW_SITE) {
   let lastPointerLockExitAt = 0, hadPointerLock = !1;
   document.addEventListener("pointerlockchange", () => {
    if (document.pointerLockElement) hadPointerLock = !0;
@@ -11364,6 +11410,65 @@ function main() {
   }), window.addEventListener("keydown", (e) => {
    if (e.code === "Escape" && STATES.isPlaying && (document.pointerLockElement || performance.now() - lastPointerLockExitAt < 400)) e.stopImmediatePropagation(), e.stopPropagation();
   }, !0);
+  let disableFeedbackDialog = getGlobalPref("ui.feedbackDialog.disabled"), hiddenSections = getGlobalPref("ui.hideSections"), blockedFeatures = getGlobalPref("block.features"), SECTION_HEADING_KEYWORDS = {
+   news: ["novidades", "news"],
+   friends: ["jogue com amigos", "play with friends"],
+   "native-mkb": ["mouse e teclado", "mouse & keyboard", "mouse and keyboard"],
+   touch: ["jogue com toque", "play with touch"],
+   "most-popular": ["mais populares", "most popular"],
+   byog: ["transmita seu próprio jogo", "jogue jogos que você possui", "stream your own game"],
+   "recently-added": ["adicionados recentemente", "recently added"],
+   "leaving-soon": ["saindo em breve", "leaving soon"],
+   genres: ["gêneros", "generos", "genres"],
+   "all-games": ["todos os jogos", "all games"]
+  }, applyNewSiteDomFilters = () => {
+   if (disableFeedbackDialog) {
+    let dialogs = document.querySelectorAll('[role="dialog"]');
+    for (let $dlg of dialogs) {
+     if ($dlg.closest(".bx-navigation-dialog")) continue;
+     let txt = ($dlg.textContent || "").toLowerCase();
+     if (txt.includes("como foi sua sessão") || txt.includes("how was your session") || txt.includes("escrever comentários") || txt.includes("write feedback")) {
+      let $closeBtn = $dlg.querySelector('button[aria-label*="Fechar"], button[aria-label*="Close"]');
+      if ($closeBtn) $closeBtn.click();
+      else document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", code: "Escape", bubbles: !0 })), $dlg.style.display = "none";
+     }
+    }
+   }
+   if (hiddenSections.length > 0) {
+    let headings = document.querySelectorAll('main h2, main h3, main [role="heading"]');
+    for (let $h of headings) {
+     let txt = ($h.textContent || "").trim().toLowerCase();
+     if (!txt) continue;
+     for (let section of hiddenSections) {
+      let keywords = SECTION_HEADING_KEYWORDS[section];
+      if (keywords && keywords.some((k) => txt.includes(k))) {
+       let $container = $h.closest("section") || $h.parentElement?.parentElement;
+       if ($container && $container.tagName !== "MAIN" && $container.tagName !== "BODY") $container.style.display = "none";
+       break;
+      }
+     }
+    }
+   }
+   if (blockedFeatures.includes("friends")) {
+    let friendHeadings = document.querySelectorAll("aside h2, aside h3, aside span, nav span");
+    for (let $el of friendHeadings) {
+     let txt = ($el.textContent || "").trim().toLowerCase();
+     if (txt === "amigos" || txt === "friends") {
+      let $block = $el.closest("section") || $el.parentElement?.parentElement;
+      if ($block && $block.tagName !== "NAV" && $block.tagName !== "ASIDE" && $block.tagName !== "BODY") $block.style.display = "none";
+     }
+    }
+   }
+  };
+  if (disableFeedbackDialog || hiddenSections.length > 0 || blockedFeatures.includes("friends")) {
+   let filterTimer = null;
+   new MutationObserver(() => {
+    if (filterTimer) return;
+    filterTimer = window.setTimeout(() => {
+     filterTimer = null, applyNewSiteDomFilters();
+    }, 250);
+   }).observe(document.documentElement, { childList: !0, subtree: !0 }), window.setTimeout(applyNewSiteDomFilters, 1500);
+  }
  }
  if (getGlobalPref("ui.controllerStatus.show")) window.addEventListener("gamepadconnected", (e) => showGamepadToast(e.gamepad)), window.addEventListener("gamepaddisconnected", (e) => showGamepadToast(e.gamepad));
 }

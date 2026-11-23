@@ -91,8 +91,9 @@ export class StreamStats {
         }
 
         this.isRunning = true;
-        if (!this.$container.isConnected) {
-            document.documentElement.appendChild(this.$container);
+        const host = document.fullscreenElement || document.documentElement;
+        if (this.$container.parentElement !== host) {
+            host.appendChild(this.$container);
         }
         this.intervalId && clearInterval(this.intervalId);
         await this.update(true);

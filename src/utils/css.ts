@@ -93,8 +93,21 @@ export function addCss() {
     }
 
    // Hide "Start a party" button in the Guide menu
-    if (getGlobalPref(GlobalPref.BLOCK_FEATURES).includes(BlockFeature.FRIENDS)) {
+    const PREF_BLOCK_FEATURES = getGlobalPref(GlobalPref.BLOCK_FEATURES);
+    if (PREF_BLOCK_FEATURES.includes(BlockFeature.FRIENDS)) {
         selectorToHide.push('#gamepass-dialog-root div[class^=AchievementsPreview-module__container] + button[class*=HomeLandingPage-module__button]');
+        if (window.location.hostname === 'play.xbox.com') {
+            selectorToHide.push('aside [aria-label*="Amigos"], aside [aria-label*="Friends"], #nav-friends, #title-bar-friends');
+        }
+    }
+
+    if (window.location.hostname === 'play.xbox.com') {
+        if (PREF_BLOCK_FEATURES.includes(BlockFeature.NOTIFICATIONS_INVITES) || PREF_BLOCK_FEATURES.includes(BlockFeature.NOTIFICATIONS_ACHIEVEMENTS)) {
+            selectorToHide.push('#title-bar-notifications, #nav-notifications');
+        }
+        if (PREF_BLOCK_FEATURES.includes(BlockFeature.CHAT)) {
+            selectorToHide.push('#title-bar-chat, #nav-chat, [aria-label*="Chat"], [aria-label*="Bate-papo"]');
+        }
     }
 
     if (selectorToHide) {

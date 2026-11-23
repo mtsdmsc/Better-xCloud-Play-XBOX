@@ -14,13 +14,18 @@ export class GameTile {
         if (($elm as any).hasWaitTime) {
             return;
         }
-        ($elm as any).hasWaitTime = true;
 
         let totalWaitTime;
 
         const api = XcloudApi.getInstance();
         const info = await api.getTitleInfo(productId);
-        if (info) {
+        if (!info) {
+            // Token/region may not be ready yet; allow retry on next hover
+            return;
+        }
+        ($elm as any).hasWaitTime = true;
+
+        if (info.titleId) {
             const waitTime = await api.getWaitTime(info.titleId);
             if (waitTime) {
                 totalWaitTime = waitTime.estimatedAllocationTimeInSeconds;
@@ -85,9 +90,14 @@ export class GameTile {
     }
 
     private static findProductIdFromHref($elm: HTMLElement): string | null {
+        const dataId = $elm.dataset.productId || $elm.getAttribute('data-product-id');
+        if (dataId && /^[A-Za-z0-9]{12}$/.test(dataId)) {
+            return dataId.toUpperCase();
+        }
         const href = $elm.getAttribute('href') || '';
-        const match = href.match(/\/(?:games|launch)\/[^/?#]+\/([A-Za-z0-9]{12})(?:[/?#]|$)/i)
-            || href.match(/\/(?:games|launch)\/([A-Za-z0-9]{12})(?:[/?#]|$)/i);
+        const match = href.match(/\/(?:games|launch|product|products)\/[^/?#]+\/([A-Za-z0-9]{12})(?:[/?#]|$)/i)
+            || href.match(/\/(?:games|launch|product|products)\/([A-Za-z0-9]{12})(?:[/?#]|$)/i)
+            || href.match(/\/([A-Za-z0-9]{12})(?:[/?#]|$)/);
         return match ? match[1].toUpperCase() : null;
     }
 
@@ -99,7 +109,7 @@ export class GameTile {
                 if (!target || !target.closest) {
                     return;
                 }
-                const $card = target.closest<HTMLElement>('a[href*="/games/"], a[href*="/launch/"]');
+                const $card = target.closest<HTMLElement>('a[href*="/games/"], a[href*="/launch/"], a[href*="/product/"], a[href*="/products/"], [data-product-id]');
                 if (!$card || ($card as any).hasWaitTime) {
                     return;
                 }
