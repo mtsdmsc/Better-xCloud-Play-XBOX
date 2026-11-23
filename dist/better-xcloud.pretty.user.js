@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Better xCloud (Desktop - play.xbox.com)
 // @namespace    https://github.com/mtsdmsc/Better-xCloud-Play-XBOX
-// @version      1.3.0
+// @version      1.3.1
 // @description  Improve Xbox Cloud Gaming (xCloud) on Desktop browsers at play.xbox.com and xbox.com/play (Port by Mateus Damasceno / Original by redphx)
 // @author       redphx, Mateus Damasceno (mtsdmsc)
 // @license      MIT
@@ -199,7 +199,7 @@ class UserAgent {
   } catch (e) {}
  }
 }
-var SCRIPT_VERSION = "1.3.0", SCRIPT_VARIANT = "full", AppInterface = window.AppInterface;
+var SCRIPT_VERSION = "1.3.1", SCRIPT_VARIANT = "full", AppInterface = window.AppInterface;
 UserAgent.init();
 var userAgent = window.navigator.userAgent.toLowerCase(), isTv = userAgent.includes("smart-tv") || userAgent.includes("smarttv") || /\baft.*\b/.test(userAgent), isVr = window.navigator.userAgent.includes("VR") && window.navigator.userAgent.includes("OculusBrowser"), browserHasTouchSupport = "ontouchstart" in window || navigator.maxTouchPoints > 0, userAgentHasTouchSupport = !isTv && !isVr && browserHasTouchSupport, STATES = {
  supportedRegion: !0,
@@ -917,6 +917,7 @@ var SUPPORTED_LANGUAGES = {
  "xbox-360-games": "Xbox 360 games",
  "xbox-apps": "Xbox apps",
  "global-shortcut-hint": "Quick shortcut to open/close menu",
+ "stats-shortcut-hint": "Quick shortcut to toggle stats",
  "report-bug": "Report bug (Issues)",
  "tooltip-general": "General Better xCloud Desktop settings. Press Alt + Shift + X at any time to open or close this menu.",
  "tooltip-audio": "Adjust stream volume booster (requires enabling volume control in the General tab).",
@@ -927,6 +928,7 @@ var SUPPORTED_LANGUAGES = {
  "playtime-alert-title": "Playtime alert",
  "playtime-today": "Today",
  "playtime-month": "Cycle",
+ "playtime-remaining": "Remaining",
  "playtime-reset": "Reset cycle",
  "playtime-reset-confirm": "Reset your monthly/daily playtime counter?"
 }, PtBrTexts = {
@@ -1257,6 +1259,7 @@ var SUPPORTED_LANGUAGES = {
  "xbox-360-games": "Jogos de Xbox 360",
  "xbox-apps": "Aplicativos do Xbox",
  "global-shortcut-hint": "Atalho rápido para abrir/fechar o menu",
+ "stats-shortcut-hint": "Atalho rápido para mostrar/ocultar estatísticas",
  "report-bug": "Reportar bug (Issues)",
  "tooltip-general": "Configurações gerais do Better xCloud Desktop. Pressione Alt + Shift + X a qualquer momento para abrir ou fechar este menu.",
  "tooltip-audio": "Ajuste o amplificador de volume da transmissão (requer o controle de volume ativado na aba Geral).",
@@ -1267,6 +1270,7 @@ var SUPPORTED_LANGUAGES = {
  "playtime-alert-title": "Aviso de tempo de jogo",
  "playtime-today": "Hoje",
  "playtime-month": "Ciclo",
+ "playtime-remaining": "Restante",
  "playtime-reset": "Zerar ciclo",
  "playtime-reset-confirm": "Deseja zerar o contador de horas jogadas (hoje e ciclo mensal)?"
 };
@@ -7752,6 +7756,7 @@ class PlaytimeTracker {
  static instance;
  static getInstance = () => PlaytimeTracker.instance ?? (PlaytimeTracker.instance = new PlaytimeTracker);
  intervalId = null;
+ observer = null;
  sessionMinutes = 0;
  getTodayKey() {
   let d = new Date;
@@ -7762,13 +7767,14 @@ class PlaytimeTracker {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
  }
  getData() {
-  let dayKey = this.getTodayKey(), monthKey = this.getMonthKey(), data = { monthKey, monthMinutes: 0, dayKey, dayMinutes: 0 };
+  let dayKey = this.getTodayKey(), monthKey = this.getMonthKey(), data = { monthKey, monthMinutes: 0, dayKey, dayMinutes: 0, remainingMinutes: null };
   try {
    let raw = window.localStorage.getItem(STORAGE_KEY);
    if (raw) {
     let parsed = JSON.parse(raw);
     if (parsed.monthKey === monthKey && typeof parsed.monthMinutes === "number") data.monthMinutes = parsed.monthMinutes;
     if (parsed.dayKey === dayKey && typeof parsed.dayMinutes === "number") data.dayMinutes = parsed.dayMinutes;
+    if (typeof parsed.remainingMinutes === "number" && parsed.remainingMinutes >= 0) data.remainingMinutes = parsed.remainingMinutes;
    }
   } catch (e) {}
   return data;
@@ -7779,25 +7785,63 @@ class PlaytimeTracker {
   } catch (e) {}
  }
  resetCycle() {
+  let current = this.getData();
   this.saveData({
    monthKey: this.getMonthKey(),
    monthMinutes: 0,
    dayKey: this.getTodayKey(),
-   dayMinutes: 0
+   dayMinutes: 0,
+   remainingMinutes: current.remainingMinutes
   });
  }
  static formatMinutes(totalMinutes) {
-  let h = Math.floor(totalMinutes / 60), m = totalMinutes % 60;
+  let safe = Math.max(0, Math.floor(totalMinutes)), h = Math.floor(safe / 60), m = safe % 60;
   if (h === 0) return `${m}min`;
   return `${h}h ${String(m).padStart(2, "0")}m`;
  }
+ parseRemainingMinutes(text) {
+  let normalized = text.trim().toLowerCase();
+  if (!normalized || normalized.length > 80) return null;
+  if (!normalized.includes("restante") && !normalized.includes("remaining") && !normalized.includes("left")) return null;
+  let hm = normalized.match(/(\d+)\s*(?:h|hora|horas|hr|hrs|hour|hours)\s*(?:e\s*)?(\d+)\s*(?:m|min|mins|minuto|minutos|minute|minutes)/);
+  if (hm) return parseInt(hm[1], 10) * 60 + parseInt(hm[2], 10);
+  let onlyH = normalized.match(/(\d+)\s*(?:h|hora|horas|hr|hrs|hour|hours)\b/);
+  if (onlyH) return parseInt(onlyH[1], 10) * 60;
+  let onlyM = normalized.match(/(\d+)\s*(?:m|min|mins|minuto|minutos|minute|minutes)\b/);
+  if (onlyM) return parseInt(onlyM[1], 10);
+  return null;
+ }
+ syncRemainingFromDom = () => {
+  let candidates = document.querySelectorAll("span, p, div");
+  for (let $el of candidates) {
+   if ($el.children.length > 0 || $el.closest(".bx-navigation-dialog, .bx-toast")) continue;
+   let parsed = this.parseRemainingMinutes($el.textContent || "");
+   if (parsed !== null) {
+    let data = this.getData();
+    if (data.remainingMinutes !== parsed) data.remainingMinutes = parsed, this.saveData(data);
+    break;
+   }
+  }
+ };
+ watchQuota() {
+  if (this.observer) return;
+  let timer = null;
+  this.observer = new MutationObserver(() => {
+   if (timer) return;
+   timer = window.setTimeout(() => {
+    timer = null, this.syncRemainingFromDom();
+   }, 600);
+  }), this.observer.observe(document.documentElement, { childList: !0, subtree: !0 });
+ }
  startSession() {
-  this.stopSession(), this.sessionMinutes = 0, this.intervalId = window.setInterval(() => {
+  this.stopSession(), this.sessionMinutes = 0, this.syncRemainingFromDom(), this.intervalId = window.setInterval(() => {
    this.sessionMinutes += 1;
    let data = this.getData();
-   if (data.dayMinutes += 1, data.monthMinutes += 1, this.saveData(data), this.sessionMinutes > 0 && this.sessionMinutes % ALERT_INTERVAL_MINUTES === 0) {
-    let sessionStr = PlaytimeTracker.formatMinutes(this.sessionMinutes), dayStr = PlaytimeTracker.formatMinutes(data.dayMinutes), monthStr = PlaytimeTracker.formatMinutes(data.monthMinutes);
-    Toast.show(`⏱️ ${t("playtime-alert-title")}: ${sessionStr}`, `${t("playtime-today")}: ${dayStr} • ${t("playtime-month")}: ${monthStr}`, { instant: !0 });
+   if (data.dayMinutes += 1, data.monthMinutes += 1, data.remainingMinutes !== null && data.remainingMinutes > 0) data.remainingMinutes -= 1;
+   if (this.saveData(data), this.sessionMinutes > 0 && this.sessionMinutes % ALERT_INTERVAL_MINUTES === 0) {
+    let sessionStr = PlaytimeTracker.formatMinutes(this.sessionMinutes), dayStr = PlaytimeTracker.formatMinutes(data.dayMinutes), statusParts = [];
+    if (data.remainingMinutes !== null) statusParts.push(`${t("playtime-remaining")}: ~${PlaytimeTracker.formatMinutes(data.remainingMinutes)}`);
+    statusParts.push(`${t("playtime-today")}: ${dayStr}`), Toast.show(`⏱️ ${t("playtime-alert-title")}: ${sessionStr}`, statusParts.join(" • "), { instant: !0 });
    }
   }, 60000);
  }
@@ -7857,8 +7901,8 @@ class SettingsDialog extends NavigationDialog {
      class: "bx-global-shortcut-badge"
     }, CE("span", !1, `⌨️ ${t("global-shortcut-hint")}: `), CE("kbd", !1, "Alt"), " + ", CE("kbd", !1, "Shift"), " + ", CE("kbd", !1, "X")));
     let ptTracker = PlaytimeTracker.getInstance(), $ptSummary = CE("span", !1, ""), refreshPlaytimeText = () => {
-     let data = ptTracker.getData();
-     $ptSummary.textContent = `⏱️ ${t("playtime")}: ${t("playtime-today")} ${PlaytimeTracker.formatMinutes(data.dayMinutes)} • ${t("playtime-month")} ${PlaytimeTracker.formatMinutes(data.monthMinutes)}`;
+     let data = ptTracker.getData(), remainingPart = data.remainingMinutes !== null ? `${t("playtime-remaining")}: ~${PlaytimeTracker.formatMinutes(data.remainingMinutes)} • ` : "";
+     $ptSummary.textContent = `⏱️ ${remainingPart}${t("playtime-today")}: ${PlaytimeTracker.formatMinutes(data.dayMinutes)} • ${t("playtime-month")}: ${PlaytimeTracker.formatMinutes(data.monthMinutes)}`;
     };
     refreshPlaytimeText();
     let $btnResetPt = CE("button", {
@@ -8214,6 +8258,12 @@ class SettingsDialog extends NavigationDialog {
   label: t("stream-stats"),
   helpTooltip: t("tooltip-stats"),
   items: [
+   ($parent) => {
+    $parent.appendChild(CE("div", {
+     class: "bx-global-shortcut-badge",
+     style: "margin-bottom: 10px;"
+    }, CE("span", !1, `⌨️ ${t("stats-shortcut-hint")}: `), CE("kbd", !1, "Alt"), " + ", CE("kbd", !1, "Shift"), " + ", CE("kbd", !1, "E")));
+   },
    "stats.showWhenPlaying",
    "stats.quickGlance.enabled",
    "stats.items",
@@ -11282,7 +11332,7 @@ if (!IS_NEW_SITE && !window.location.pathname.match(/^\/[a-zA-Z]{2}-[a-zA-Z]{2}\
 if (IS_NEW_SITE) {
  let startNewSiteWatchers = () => {
   window.setTimeout(() => {
-   HeaderSection.getInstance().watchHeader(), GuideMenu.getInstance().watchGuideMenu(), StreamUiHandler.watchStreamHud();
+   HeaderSection.getInstance().watchHeader(), GuideMenu.getInstance().watchGuideMenu(), StreamUiHandler.watchStreamHud(), PlaytimeTracker.getInstance().watchQuota();
   }, 1200);
  };
  if (document.readyState === "complete") startNewSiteWatchers();

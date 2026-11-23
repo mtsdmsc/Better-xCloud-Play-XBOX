@@ -443,6 +443,7 @@ const Texts = {
     "xbox-360-games": "Xbox 360 games",
     "xbox-apps": "Xbox apps",
     "global-shortcut-hint": "Quick shortcut to open/close menu",
+    "stats-shortcut-hint": "Quick shortcut to toggle stats",
     "report-bug": "Report bug (Issues)",
     "tooltip-general": "General Better xCloud Desktop settings. Press Alt + Shift + X at any time to open or close this menu.",
     "tooltip-audio": "Adjust stream volume booster (requires enabling volume control in the General tab).",
@@ -453,6 +454,7 @@ const Texts = {
     "playtime-alert-title": "Playtime alert",
     "playtime-today": "Today",
     "playtime-month": "Cycle",
+    "playtime-remaining": "Remaining",
     "playtime-reset": "Reset cycle",
     "playtime-reset-confirm": "Reset your monthly/daily playtime counter?",
 };
@@ -785,6 +787,7 @@ const PtBrTexts: Partial<Record<keyof typeof Texts, string>> = {
     "xbox-360-games": "Jogos de Xbox 360",
     "xbox-apps": "Aplicativos do Xbox",
     "global-shortcut-hint": "Atalho rápido para abrir/fechar o menu",
+    "stats-shortcut-hint": "Atalho rápido para mostrar/ocultar estatísticas",
     "report-bug": "Reportar bug (Issues)",
     "tooltip-general": "Configurações gerais do Better xCloud Desktop. Pressione Alt + Shift + X a qualquer momento para abrir ou fechar este menu.",
     "tooltip-audio": "Ajuste o amplificador de volume da transmissão (requer o controle de volume ativado na aba Geral).",
@@ -795,6 +798,7 @@ const PtBrTexts: Partial<Record<keyof typeof Texts, string>> = {
     "playtime-alert-title": "Aviso de tempo de jogo",
     "playtime-today": "Hoje",
     "playtime-month": "Ciclo",
+    "playtime-remaining": "Restante",
     "playtime-reset": "Zerar ciclo",
     "playtime-reset-confirm": "Deseja zerar o contador de horas jogadas (hoje e ciclo mensal)?",
 };

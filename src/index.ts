@@ -166,6 +166,7 @@ if (IS_NEW_SITE) {
             HeaderSection.getInstance().watchHeader();
             GuideMenu.getInstance().watchGuideMenu();
             StreamUiHandler.watchStreamHud();
+            PlaytimeTracker.getInstance().watchQuota();
         }, 1200);
     };
 

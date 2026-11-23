@@ -164,7 +164,10 @@ export class SettingsDialog extends NavigationDialog {
                 const $ptSummary = CE('span', false, '');
                 const refreshPlaytimeText = () => {
                     const data = ptTracker.getData();
-                    $ptSummary.textContent = `⏱️ ${t('playtime')}: ${t('playtime-today')} ${PlaytimeTracker.formatMinutes(data.dayMinutes)} • ${t('playtime-month')} ${PlaytimeTracker.formatMinutes(data.monthMinutes)}`;
+                    const remainingPart = data.remainingMinutes !== null
+                        ? `${t('playtime-remaining')}: ~${PlaytimeTracker.formatMinutes(data.remainingMinutes)} • `
+                        : '';
+                    $ptSummary.textContent = `⏱️ ${remainingPart}${t('playtime-today')}: ${PlaytimeTracker.formatMinutes(data.dayMinutes)} • ${t('playtime-month')}: ${PlaytimeTracker.formatMinutes(data.monthMinutes)}`;
                 };
                 refreshPlaytimeText();
 
@@ -618,6 +621,19 @@ export class SettingsDialog extends NavigationDialog {
         label: t('stream-stats'),
         helpTooltip: t('tooltip-stats'),
         items: [
+            ($parent: HTMLElement) => {
+                $parent.appendChild(CE('div', {
+                    class: 'bx-global-shortcut-badge',
+                    style: 'margin-bottom: 10px;',
+                },
+                    CE('span', false, `⌨️ ${t('stats-shortcut-hint')}: `),
+                    CE('kbd', false, 'Alt'),
+                    ' + ',
+                    CE('kbd', false, 'Shift'),
+                    ' + ',
+                    CE('kbd', false, 'E'),
+                ));
+            },
             StreamPref.STATS_SHOW_WHEN_PLAYING,
             StreamPref.STATS_QUICK_GLANCE_ENABLED,
             StreamPref.STATS_ITEMS,
