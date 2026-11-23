@@ -38,6 +38,10 @@ export function addCss() {
 
     if (window.location.hostname === 'play.xbox.com') {
         selectorToHide.push('section[data-testid="channel-error-container"]');
+        if (getGlobalPref(GlobalPref.UI_DISABLE_FEEDBACK_DIALOG)) {
+            // Instantly hide post-stream feedback dialog & its backdrop with zero flash while JS unmounts it
+            selectorToHide.push('#dialog-root:has([data-feedback-container="true"])');
+        }
     }
 
     // Hide BYOG section

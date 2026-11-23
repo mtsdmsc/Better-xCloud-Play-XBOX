@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Better xCloud (Desktop - play.xbox.com)
 // @namespace    https://github.com/mtsdmsc/Better-xCloud-Play-XBOX
-// @version      1.3.7
+// @version      1.3.9
 // @description  Improve Xbox Cloud Gaming (xCloud) on Desktop browsers at play.xbox.com and xbox.com/play (Port by Mateus Damasceno / Original by redphx)
 // @author       redphx, Mateus Damasceno (mtsdmsc)
 // @license      MIT
@@ -199,7 +199,7 @@ class UserAgent {
   } catch (e) {}
  }
 }
-var SCRIPT_VERSION = "1.3.7", SCRIPT_VARIANT = "full", AppInterface = window.AppInterface;
+var SCRIPT_VERSION = "1.3.9", SCRIPT_VARIANT = "full", AppInterface = window.AppInterface;
 UserAgent.init();
 var userAgent = window.navigator.userAgent.toLowerCase(), isTv = userAgent.includes("smart-tv") || userAgent.includes("smarttv") || /\baft.*\b/.test(userAgent), isVr = window.navigator.userAgent.includes("VR") && window.navigator.userAgent.includes("OculusBrowser"), browserHasTouchSupport = "ontouchstart" in window || navigator.maxTouchPoints > 0, userAgentHasTouchSupport = !isTv && !isVr && browserHasTouchSupport, STATES = {
  supportedRegion: !0,
@@ -10440,7 +10440,9 @@ function addCss() {
  if (PREF_HIDE_SECTIONS.includes("news")) {
   if (selectorToHide.push("#BodyContent > div[class*=CarouselRow-module]"), selectorToHide.push('section[data-testid="channel-error-container"]'), window.location.hostname === "play.xbox.com") selectorToHide.push('[data-home-iris-container="true"]');
  }
- if (window.location.hostname === "play.xbox.com") selectorToHide.push('section[data-testid="channel-error-container"]');
+ if (window.location.hostname === "play.xbox.com") {
+  if (selectorToHide.push('section[data-testid="channel-error-container"]'), getGlobalPref("ui.feedbackDialog.disabled")) selectorToHide.push('#dialog-root:has([data-feedback-container="true"])');
+ }
  if (PREF_HIDE_SECTIONS.includes("byog")) {
   if (selectorToHide.push("#BodyContent > div[class*=ShowcaseRow-module__container___]"), window.location.hostname === "play.xbox.com") selectorToHide.push('div.flow-root:has([data-sigl-id="e78d9a61-5ef4-43af-b400-edba1250b18e"])');
  }
@@ -11963,50 +11965,36 @@ function main() {
     cur = parent;
    }
    return null;
-  }, applyNewSiteDomFilters = () => {
-   if (disableFeedbackDialog) {
-    let $feedbackModal = null, dialogs = document.querySelectorAll('[role="dialog"], [aria-modal="true"], #dialog-root > div');
-    for (let $d of dialogs) {
-     if ($d.closest(".bx-navigation-dialog")) continue;
-     let txt = ($d.textContent || "").toLowerCase();
-     if (txt.includes("como foi sua sessão") || txt.includes("how was your session") || txt.includes("ótimo!") && txt.includes("não muito bom") || txt.includes("great!") && txt.includes("not great")) {
-      $feedbackModal = $d;
-      break;
-     }
-    }
+  }, lastFeedbackDismissAt = 0, applyNewSiteDomFilters = () => {
+   if (getGlobalPref("ui.feedbackDialog.disabled")) {
+    let $feedbackModal = document.querySelector('[data-feedback-container="true"]');
     if (!$feedbackModal) {
-     let leafNodes = document.querySelectorAll('h1, h2, h3, [role="heading"], p, span, div');
-     for (let $el of leafNodes) {
-      if ($el.children.length > 0 || $el.closest(".bx-navigation-dialog")) continue;
-      let txt = ($el.textContent || "").trim().toLowerCase();
-      if (txt === "como foi sua sessão?" || txt === "how was your session?") {
-       $feedbackModal = $el.closest('[role="dialog"], [aria-modal="true"]') || $el.parentElement;
+     let dialogs = document.querySelectorAll('dialog[open], dialog, [role="dialog"], [aria-modal="true"], [data-dialog]');
+     for (let $d of dialogs) {
+      if ($d.closest(".bx-navigation-dialog")) continue;
+      let txt = ($d.textContent || "").replace(/\s+/g, " ").toLowerCase();
+      if (txt.includes("como foi sua sessão") || txt.includes("how was your session") || txt.includes("ótimo!") && txt.includes("não muito bom") || txt.includes("great!") && txt.includes("not great")) {
+       $feedbackModal = $d;
        break;
       }
      }
     }
-    if ($feedbackModal && !$feedbackModal.dataset.bxDismissed) {
-     $feedbackModal.dataset.bxDismissed = "1";
-     let $closeBtn = Array.from(document.querySelectorAll('[role="dialog"] button, [aria-modal="true"] button, #dialog-root button')).find((b) => {
-      if (b.closest(".bx-navigation-dialog")) return !1;
-      let label = (b.getAttribute("aria-label") || b.title || b.textContent || "").trim().toLowerCase();
-      return label === "fechar" || label === "close" || label.includes("fechar") || label.includes("close") || label.includes("dismiss");
-     });
-     if ($closeBtn) $closeBtn.click();
-     let escTargets = [document.activeElement || document.body, $feedbackModal, document, window];
+    let now = performance.now();
+    if ($feedbackModal && now - lastFeedbackDismissAt > 300) {
+     lastFeedbackDismissAt = now;
+     let $backdrop = ($feedbackModal.closest("#dialog-root") || document.getElementById("dialog-root"))?.querySelector('[data-dialog-backdrop="true"]');
+     if ($backdrop) try {
+       $backdrop.dispatchEvent(new PointerEvent("pointerdown", { bubbles: !0, cancelable: !0, button: 0 })), $backdrop.dispatchEvent(new MouseEvent("mousedown", { bubbles: !0, cancelable: !0, button: 0 })), $backdrop.dispatchEvent(new MouseEvent("mouseup", { bubbles: !0, cancelable: !0, button: 0 })), $backdrop.click();
+      } catch (e) {}
+     let $nativeDialog = $feedbackModal.tagName === "DIALOG" ? $feedbackModal : $feedbackModal.closest("dialog");
+     if ($nativeDialog && typeof $nativeDialog.close === "function") try {
+       $nativeDialog.close();
+      } catch (e) {}
+     let $roleDialog = $feedbackModal.closest('[role="dialog"], [data-dialog]') || $feedbackModal, escTargets = [document.activeElement || document.body, $roleDialog, document, window];
      for (let tgt of escTargets)
       try {
        tgt.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", code: "Escape", keyCode: 27, which: 27, bubbles: !0, cancelable: !0 })), tgt.dispatchEvent(new KeyboardEvent("keyup", { key: "Escape", code: "Escape", keyCode: 27, which: 27, bubbles: !0, cancelable: !0 }));
       } catch (e) {}
-     window.setTimeout(() => {
-      if (!$feedbackModal || !$feedbackModal.isConnected) return;
-      let $overlay = $feedbackModal, cur = $feedbackModal.parentElement;
-      while (cur && cur !== document.body && cur !== document.documentElement) {
-       if (getComputedStyle(cur).position === "fixed" && cur.id !== "root") $overlay = cur;
-       cur = cur.parentElement;
-      }
-      $overlay.style.setProperty("display", "none", "important"), $overlay.style.setProperty("pointer-events", "none", "important");
-     }, 150);
     }
    }
    if (hiddenSections.length > 0) {

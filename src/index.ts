@@ -660,83 +660,65 @@ function main() {
             return null;
         };
 
+        let lastFeedbackDismissAt = 0;
+
         const applyNewSiteDomFilters = () => {
             // 1. Auto-close post-stream feedback modal ("Como foi sua sessão?" / "How was your session?")
-            if (disableFeedbackDialog) {
-                let $feedbackModal: HTMLElement | null = null;
-                const dialogs = document.querySelectorAll<HTMLElement>('[role="dialog"], [aria-modal="true"], #dialog-root > div');
-                for (const $d of dialogs) {
-                    if ($d.closest('.bx-navigation-dialog')) {
-                        continue;
-                    }
-                    const txt = ($d.textContent || '').toLowerCase();
-                    if (
-                        txt.includes('como foi sua sessão') ||
-                        txt.includes('how was your session') ||
-                        (txt.includes('ótimo!') && txt.includes('não muito bom')) ||
-                        (txt.includes('great!') && txt.includes('not great'))
-                    ) {
-                        $feedbackModal = $d;
-                        break;
-                    }
-                }
+            if (getGlobalPref(GlobalPref.UI_DISABLE_FEEDBACK_DIALOG)) {
+                let $feedbackModal: HTMLElement | null = document.querySelector<HTMLElement>('[data-feedback-container="true"]');
 
                 if (!$feedbackModal) {
-                    const leafNodes = document.querySelectorAll<HTMLElement>('h1, h2, h3, [role="heading"], p, span, div');
-                    for (const $el of leafNodes) {
-                        if ($el.children.length > 0 || $el.closest('.bx-navigation-dialog')) {
+                    const dialogs = document.querySelectorAll<HTMLElement>('dialog[open], dialog, [role="dialog"], [aria-modal="true"], [data-dialog]');
+                    for (const $d of dialogs) {
+                        if ($d.closest('.bx-navigation-dialog')) {
                             continue;
                         }
-                        const txt = ($el.textContent || '').trim().toLowerCase();
-                        if (txt === 'como foi sua sessão?' || txt === 'how was your session?') {
-                            $feedbackModal = $el.closest<HTMLElement>('[role="dialog"], [aria-modal="true"]') || $el.parentElement;
+                        // Normalize non-breaking spaces (&nbsp; / \u00A0) used in play.xbox.com Portuguese strings
+                        const txt = ($d.textContent || '').replace(/\s+/g, ' ').toLowerCase();
+                        if (
+                            txt.includes('como foi sua sessão') ||
+                            txt.includes('how was your session') ||
+                            (txt.includes('ótimo!') && txt.includes('não muito bom')) ||
+                            (txt.includes('great!') && txt.includes('not great'))
+                        ) {
+                            $feedbackModal = $d;
                             break;
                         }
                     }
                 }
 
-                if ($feedbackModal && !$feedbackModal.dataset.bxDismissed) {
-                    $feedbackModal.dataset.bxDismissed = '1';
+                const now = performance.now();
+                if ($feedbackModal && (now - lastFeedbackDismissAt > 300)) {
+                    lastFeedbackDismissAt = now;
 
-                    const buttons = Array.from(document.querySelectorAll<HTMLButtonElement>('[role="dialog"] button, [aria-modal="true"] button, #dialog-root button'));
-                    const $closeBtn = buttons.find(b => {
-                        if (b.closest('.bx-navigation-dialog')) {
-                            return false;
-                        }
-                        const label = (b.getAttribute('aria-label') || b.title || b.textContent || '').trim().toLowerCase();
-                        return label === 'fechar' || label === 'close' || label.includes('fechar') || label.includes('close') || label.includes('dismiss');
-                    });
+                    const $dialogRoot = $feedbackModal.closest<HTMLElement>('#dialog-root') || document.getElementById('dialog-root');
+                    const $backdrop = $dialogRoot?.querySelector<HTMLElement>('[data-dialog-backdrop="true"]');
 
-                    if ($closeBtn) {
-                        $closeBtn.click();
+                    // A. Click the React dialog backdrop directly to trigger clean React unmount
+                    if ($backdrop) {
+                        try {
+                            $backdrop.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true, button: 0 }));
+                            $backdrop.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true, button: 0 }));
+                            $backdrop.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, cancelable: true, button: 0 }));
+                            $backdrop.click();
+                        } catch (e) {}
                     }
 
-                    // Always dispatch Escape (keydown + keyup) so play.xbox.com closes the React modal cleanly
-                    const escTargets: EventTarget[] = [document.activeElement || document.body, $feedbackModal, document, window];
+                    // B. Native HTML <dialog> close if applicable
+                    const $nativeDialog = ($feedbackModal.tagName === 'DIALOG' ? $feedbackModal : $feedbackModal.closest('dialog')) as HTMLDialogElement | null;
+                    if ($nativeDialog && typeof $nativeDialog.close === 'function') {
+                        try { $nativeDialog.close(); } catch (e) {}
+                    }
+
+                    // C. Dispatch Escape (keydown + keyup) on active dialog + document + window
+                    const $roleDialog = $feedbackModal.closest<HTMLElement>('[role="dialog"], [data-dialog]') || $feedbackModal;
+                    const escTargets: EventTarget[] = [document.activeElement || document.body, $roleDialog, document, window];
                     for (const tgt of escTargets) {
                         try {
                             tgt.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', code: 'Escape', keyCode: 27, which: 27, bubbles: true, cancelable: true }));
                             tgt.dispatchEvent(new KeyboardEvent('keyup', { key: 'Escape', code: 'Escape', keyCode: 27, which: 27, bubbles: true, cancelable: true }));
                         } catch (e) {}
                     }
-
-                    // Fallback: if React didn't unmount the modal after Escape, hide its overlay container
-                    window.setTimeout(() => {
-                        if (!$feedbackModal || !$feedbackModal.isConnected) {
-                            return;
-                        }
-                        let $overlay: HTMLElement = $feedbackModal;
-                        let cur: HTMLElement | null = $feedbackModal.parentElement;
-                        while (cur && cur !== document.body && cur !== document.documentElement) {
-                            const style = getComputedStyle(cur);
-                            if (style.position === 'fixed' && cur.id !== 'root') {
-                                $overlay = cur;
-                            }
-                            cur = cur.parentElement;
-                        }
-                        $overlay.style.setProperty('display', 'none', 'important');
-                        $overlay.style.setProperty('pointer-events', 'none', 'important');
-                    }, 150);
                 }
             }
 
