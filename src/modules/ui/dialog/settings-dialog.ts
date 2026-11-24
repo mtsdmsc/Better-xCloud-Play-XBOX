@@ -1074,6 +1074,7 @@ export class SettingsDialog extends NavigationDialog {
                 }
 
                 label = createButton({
+                    icon: BxIcon.BETTER_XCLOUD,
                     label: label,
                     url: 'https://github.com/mtsdmsc/Better-xCloud-Play-XBOX/releases',
                     style: ButtonStyle.NORMAL_CASE | ButtonStyle.FROSTED | ButtonStyle.FOCUSABLE,

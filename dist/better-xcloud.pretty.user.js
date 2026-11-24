@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         PlayXbox Enhanced (Desktop)
 // @namespace    https://github.com/mtsdmsc/Better-xCloud-Play-XBOX
-// @version      1.4.0
+// @version      1.4.1
 // @description  Enhance Xbox Cloud Gaming (xCloud) on Desktop browsers at play.xbox.com and xbox.com/play (by Mateus Damasceno / Based on Better xCloud by redphx)
 // @author       Mateus Damasceno (mtsdmsc), redphx
 // @license      MIT
@@ -199,7 +199,7 @@ class UserAgent {
   } catch (e) {}
  }
 }
-var SCRIPT_VERSION = "1.4.0", SCRIPT_VARIANT = "full", AppInterface = window.AppInterface;
+var SCRIPT_VERSION = "1.4.1", SCRIPT_VARIANT = "full", AppInterface = window.AppInterface;
 UserAgent.init();
 var userAgent = window.navigator.userAgent.toLowerCase(), isTv = userAgent.includes("smart-tv") || userAgent.includes("smarttv") || /\baft.*\b/.test(userAgent), isVr = window.navigator.userAgent.includes("VR") && window.navigator.userAgent.includes("OculusBrowser"), browserHasTouchSupport = "ontouchstart" in window || navigator.maxTouchPoints > 0, userAgentHasTouchSupport = !isTv && !isVr && browserHasTouchSupport, STATES = {
  supportedRegion: !0,
@@ -8686,6 +8686,7 @@ class SettingsDialog extends NavigationDialog {
    if (label === t("better-xcloud")) {
     if (label += " " + SCRIPT_VERSION, SCRIPT_VARIANT === "lite") label += " (Lite)";
     label = createButton({
+     icon: BxIcon.BETTER_XCLOUD,
      label,
      url: "https://github.com/mtsdmsc/Better-xCloud-Play-XBOX/releases",
      style: 4096 | 16 | 64
@@ -9500,6 +9501,7 @@ class HeaderSection {
   });
   let $btnSettings = this.$btnSettings = createButton({
    classes: ["bx-header-settings-button", "bx-gone"],
+   icon: BxIcon.BETTER_XCLOUD,
    label: t("better-xcloud"),
    title: `${t("better-xcloud")} (Alt + Shift + X)`,
    style: 16 | 32 | 64 | 256,
@@ -11156,7 +11158,7 @@ class GameBar {
      SettingsDialog.getInstance().show(), BxEventBus.Stream.emit("gameBar.activated", {});
     }
    }
-  }, createSvgIcon(BxIcon.STREAM_SETTINGS));
+  }, createSvgIcon(BxIcon.BETTER_XCLOUD));
   if ($container.appendChild($btnStats), $container.appendChild($btnSettings), $gameBar.addEventListener("click", (e) => {
    if (e.target !== $gameBar) return;
    $container.classList.contains("bx-show") ? this.hideBar() : this.showBar();

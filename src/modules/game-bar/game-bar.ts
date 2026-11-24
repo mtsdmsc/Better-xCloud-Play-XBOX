@@ -96,7 +96,7 @@ export class GameBar {
                     BxEventBus.Stream.emit('gameBar.activated', {});
                 },
             },
-        }, createSvgIcon(BxIcon.STREAM_SETTINGS));
+        }, createSvgIcon(BxIcon.BETTER_XCLOUD));
 
         $container.appendChild($btnStats);
         $container.appendChild($btnSettings);

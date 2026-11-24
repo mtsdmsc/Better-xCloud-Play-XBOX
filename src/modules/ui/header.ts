@@ -41,6 +41,7 @@ export class HeaderSection {
 
         let $btnSettings = this.$btnSettings = createButton({
             classes: ['bx-header-settings-button', 'bx-gone'],
+            icon: BxIcon.BETTER_XCLOUD,
             label: t('better-xcloud'),
             title: `${t('better-xcloud')} (Alt + Shift + X)`,
             style: ButtonStyle.FROSTED | ButtonStyle.DROP_SHADOW | ButtonStyle.FOCUSABLE | ButtonStyle.FULL_HEIGHT,
