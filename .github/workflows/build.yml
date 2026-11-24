@@ -50,7 +50,7 @@ jobs:
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: better-xcloud-v${{ steps.ver.outputs.version }}
+          name: playxbox-enhanced-v${{ steps.ver.outputs.version }}
           path: |
             dist/better-xcloud.user.js
             dist/better-xcloud.pretty.user.js
@@ -61,7 +61,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.ver.outputs.tag }}
-          name: Better xCloud Desktop ${{ steps.ver.outputs.tag }}
+          name: PlayXbox Enhanced ${{ steps.ver.outputs.tag }}
           generate_release_notes: true
           files: |
             dist/better-xcloud.user.js

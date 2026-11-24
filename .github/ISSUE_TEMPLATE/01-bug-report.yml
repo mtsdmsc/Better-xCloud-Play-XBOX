@@ -1,5 +1,5 @@
 name: Relatório de Bug 🐞 / Bug Report
-description: Relate um problema encontrado no porte Desktop para play.xbox.com
+description: Relate um problema encontrado no PlayXbox Enhanced (Desktop - play.xbox.com)
 title: "[Bug] "
 labels:
   - bug
@@ -8,7 +8,7 @@ body:
     attributes:
       value: |
         > [!NOTE]
-        > - Este repositório é destinado exclusivamente ao **porte Desktop (Windows, macOS, Linux, SteamOS)** do Better xCloud para `play.xbox.com`, mantido por [**@mtsdmsc**](https://github.com/mtsdmsc).
+        > - Este repositório é destinado exclusivamente ao **PlayXbox Enhanced (Desktop: Windows, macOS, Linux, SteamOS)** para `play.xbox.com`, mantido por [**@mtsdmsc**](https://github.com/mtsdmsc) (baseado no Better xCloud).
         > - Dispositivos móveis (Android/iOS) e Smart TVs **não são suportados** neste porte.
         > - Você pode preencher este relatório em **Português** ou **Inglês**.
 
@@ -38,7 +38,7 @@ body:
   - type: dropdown
     id: question_02
     attributes:
-      label: "O bug deixa de acontecer quando você desativa o script Better xCloud?"
+      label: "O bug deixa de acontecer quando você desativa o script PlayXbox Enhanced?"
       options:
         - "Sim"
         - "Não"
@@ -70,9 +70,9 @@ body:
   - type: input
     id: extension_version
     attributes:
-      label: "Versão do Better xCloud"
+      label: "Versão do PlayXbox Enhanced"
       description: "Qual versão do script você está usando?"
-      placeholder: "ex.: 1.0.0"
+      placeholder: "ex.: 1.4.0"
     validations:
       required: true
 

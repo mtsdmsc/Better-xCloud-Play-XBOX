@@ -390,18 +390,18 @@ export class SettingsDialog extends NavigationDialog {
                     class: 'bx-port-footer',
                 },
                     CE('div', false,
-                        `Desktop Port v${SCRIPT_VERSION} by `,
+                        `PlayXbox Enhanced v${SCRIPT_VERSION} by `,
                         CE('a', {
                             href: 'https://github.com/mtsdmsc/Better-xCloud-Play-XBOX',
                             target: '_blank',
                             tabindex: 0,
                         }, '@mtsdmsc'),
-                        ' • Original by ',
+                        ' • Base: ',
                         CE('a', {
                             href: 'https://github.com/redphx/better-xcloud',
                             target: '_blank',
                             tabindex: 0,
-                        }, '@redphx'),
+                        }, 'Better xCloud (@redphx)'),
                     ),
                     CE('div', { class: 'bx-port-footer-links' },
                         CE('a', {

@@ -4,6 +4,8 @@ import { BxLogger } from "./bx-logger";
 type ToastOptions = {
     instant?: boolean;
     html?: boolean;
+    duration?: number;
+    variant?: 'default' | 'alert';
 }
 
 export class Toast {
@@ -70,11 +72,12 @@ export class Toast {
 
         this.isShowing = true;
 
-        this.timeoutId && clearTimeout(this.timeoutId);
-        this.timeoutId = window.setTimeout(this.hide, this.DURATION);
-
         // Get values from item
         const [msg, status, options] = this.stack.shift()!;
+
+        this.timeoutId && clearTimeout(this.timeoutId);
+        const duration = (options && options.duration) || this.DURATION;
+        this.timeoutId = window.setTimeout(this.hide, duration);
 
         if (options && options.html) {
             this.$msg.innerHTML = msg;
@@ -90,6 +93,7 @@ export class Toast {
         }
 
         const classList = this.$wrapper.classList;
+        classList.toggle('bx-toast-alert', options?.variant === 'alert');
         classList.remove('bx-offscreen', 'bx-hide');
         classList.add('bx-show');
     }

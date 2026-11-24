@@ -1,6 +1,7 @@
 <div align="center">
-    <img src="https://raw.githubusercontent.com/redphx/better-xcloud/refs/heads/typescript/resources/logos/better-xcloud.png" width="256"/>  
-    <h1>Better xCloud — Desktop Port para <code>play.xbox.com</code></h1>
+    <img src="./resources/logo.svg" width="128" alt="PlayXbox Enhanced Logo" />
+    <h1>PlayXbox Enhanced</h1>
+    <p><strong>Aprimoramentos para o Xbox Cloud Gaming no navegador Desktop (<code>play.xbox.com</code>)</strong></p>
     <!-- Latest Version Badge -->
     <a href="https://github.com/mtsdmsc/Better-xCloud-Play-XBOX/releases"><img src="https://img.shields.io/github/v/release/mtsdmsc/Better-xCloud-Play-XBOX?label=latest" alt="Latest version" /></a>
     <!-- Total Downloads Badge -->
@@ -11,11 +12,11 @@
 
 ---
 
-### Melhore sua experiência no Xbox Cloud Gaming (xCloud) em navegadores **Desktop** no novo domínio [play.xbox.com](https://play.xbox.com) e em [xbox.com/play](https://www.xbox.com/play), incluindo suporte a Remote Play e tradução nativa para Português (Brasil).
+### Melhore sua experiência no Xbox Cloud Gaming (xCloud) em navegadores **Desktop** no novo domínio [play.xbox.com](https://play.xbox.com) (com compatibilidade também para [xbox.com/play](https://www.xbox.com/play)), incluindo Remote Play, controle de tempo de jogo, atalhos no controle e tradução nativa para Português (Brasil).
 
 > [!NOTE]
-> Este repositório é um **porte dedicado para Desktop mantido por [Mateus Damasceno (@mtsdmsc)](https://github.com/mtsdmsc)** a partir do projeto original [**Better xCloud**](https://github.com/redphx/better-xcloud), criado e mantido por [**@redphx**](https://github.com/redphx).  
-> O foco exclusivo desta versão é oferecer compatibilidade estável e completa com a nova interface do **`play.xbox.com`** em navegadores de **computador (PC, Mac, Linux e SteamOS)**.
+> O **PlayXbox Enhanced** é um fork independente voltado para **Desktop** mantido por [**Mateus Damasceno (@mtsdmsc)**](https://github.com/mtsdmsc), construído sobre a base do projeto original [**Better xCloud**](https://github.com/redphx/better-xcloud), criado por [**@redphx**](https://github.com/redphx).  
+> O foco exclusivo deste projeto é oferecer uma experiência estável e completa na nova interface do **`play.xbox.com`** em navegadores de **computador (PC, Mac, Linux e SteamOS)**.
 
 > [!IMPORTANT]
 > **Apenas Desktop:** Esta versão **não oferece suporte** a dispositivos móveis (Android / iOS) nem Smart TVs. Para Android / Android TV, utilize o aplicativo oficial do projeto original: [redphx/better-xcloud-android](https://github.com/redphx/better-xcloud-android).
@@ -36,9 +37,10 @@ Com a migração do Xbox Cloud Gaming para o novo domínio `play.xbox.com`, a in
 
 - **Suporte híbrido de domínio (`@match`):** funciona nativamente em `https://play.xbox.com/*` e também em `https://www.xbox.com/*/play*`.
 - **Tradução nativa para Português (Brasil) (`pt-BR`):** todas as strings de interface estão embutidas diretamente no script, funcionando mesmo sob o bloqueio de CSP do `play.xbox.com`.
-- **Injeção de UI na nova barra superior:** detecção reativa via `MutationObserver` no cabeçalho (`<nav>`) para exibir os botões de **Configurações do Better xCloud** (com indicador de região/servidor) e **Remote Play**.
-- **Menu Guia (HUD / `#NexusId`) e Diálogos:** integração dos botões, atalhos, *Game Bar*, diálogos de configuração e navegação no novo DOM do `play.xbox.com`.
-- **Recursos de Streaming e Controles Desktop:** seleção de servidor/região, bypass regional, resolução **1080p (HQ)**, controle de bitrate/codec, **Clarity Boost**, renderizadores **WebGL2 / WebGPU**, estatísticas em tempo real (`StreamStats`), **Mouse e Teclado (MKB)** e **Remote Play** (`/consoles/launch/`).
+- **Injeção de UI na nova barra superior:** detecção reativa via `MutationObserver` no cabeçalho (`<nav>`) para exibir os botões do **PlayXbox Enhanced** (com indicador de região/servidor) e **Remote Play**, além dos atalhos globais `Alt + Shift + X` (menu) e `Alt + Shift + E` (estatísticas).
+- **Menu Guia (HUD / `#NexusId`), Atalhos e Personalização do Controle:** integração completa no novo DOM do `play.xbox.com`, atalhos de controle (`Xbox + botão`), remapeamento com badges visuais do Xbox e isolamento de foco sem travar o controle.
+- **Monitor de Tempo de Jogo:** sincroniza automaticamente a cota mensal exibida no painel Xbox e emite alerta visual vermelho de 10s a cada 30 minutos de sessão.
+- **Limpeza da Tela Inicial e Qualidade de Stream:** ocultação de todas as 11 seções do `play.xbox.com`, remoção automática do diálogo pós-jogo (*"Como foi sua sessão?"*), tempo de fila nos cartões (incluindo *Voltar a jogar*), **1080p (HQ)**, controle de bitrate/codec, **Clarity Boost**, **WebGL2 / WebGPU**, **Mouse e Teclado (MKB)** e **Remote Play**.
 
 ---
 
@@ -46,7 +48,7 @@ Com a migração do Xbox Cloud Gaming para o novo domínio `play.xbox.com`, a in
 
 1. Instale a extensão [**Tampermonkey**](https://www.tampermonkey.net/) ou [**Violentmonkey**](https://violentmonkey.github.io/) no seu navegador Desktop.
 2. Clique no link abaixo para instalar o script compilado diretamente deste repositório:
-   - 👉 [**Instalar Better xCloud Desktop (`better-xcloud.user.js`)**](https://raw.githubusercontent.com/mtsdmsc/Better-xCloud-Play-XBOX/main/dist/better-xcloud.user.js)
+   - 👉 [**Instalar PlayXbox Enhanced (`better-xcloud.user.js`)**](https://raw.githubusercontent.com/mtsdmsc/Better-xCloud-Play-XBOX/main/dist/better-xcloud.user.js)
    - *(Ou baixe a versão mais recente na aba [**Releases**](https://github.com/mtsdmsc/Better-xCloud-Play-XBOX/releases)).*
 3. Acesse [**play.xbox.com**](https://play.xbox.com) e aproveite!
 

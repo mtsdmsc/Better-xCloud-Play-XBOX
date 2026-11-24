@@ -1,9 +1,9 @@
 // ==UserScript==
-// @name         Better xCloud (Desktop Lite - play.xbox.com)
+// @name         PlayXbox Enhanced (Desktop Lite)
 // @namespace    https://github.com/mtsdmsc/Better-xCloud-Play-XBOX
 // @version      [[VERSION]]
-// @description  Improve Xbox Cloud Gaming (xCloud) on Desktop browsers at play.xbox.com and xbox.com/play (Port by Mateus Damasceno / Original by redphx)
-// @author       redphx, Mateus Damasceno (mtsdmsc)
+// @description  Enhance Xbox Cloud Gaming (xCloud) on Desktop browsers at play.xbox.com and xbox.com/play (by Mateus Damasceno / Based on Better xCloud by redphx)
+// @author       Mateus Damasceno (mtsdmsc), redphx
 // @license      MIT
 // @match        https://www.xbox.com/*/play*
 // @match        https://play.xbox.com/*

@@ -1,7 +1,7 @@
 {
-  "name": "better-xcloud-play-xbox-desktop",
-  "description": "Desktop-only port of Better xCloud (originally by redphx) with support for play.xbox.com and xbox.com/play",
-  "author": "Mateus Damasceno (mtsdmsc) / Original by redphx",
+  "name": "playxbox-enhanced",
+  "description": "PlayXbox Enhanced — Desktop userscript for Xbox Cloud Gaming at play.xbox.com and xbox.com/play (based on Better xCloud by redphx)",
+  "author": "Mateus Damasceno (mtsdmsc) / Based on Better xCloud by redphx",
   "license": "MIT",
   "repository": {
     "type": "git",

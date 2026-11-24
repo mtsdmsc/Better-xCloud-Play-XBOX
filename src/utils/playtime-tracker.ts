@@ -175,7 +175,7 @@ export class PlaytimeTracker {
                 Toast.show(
                     `⏱️ ${t('playtime-alert-title')}: ${sessionStr}`,
                     statusParts.join(' • '),
-                    { instant: true },
+                    { instant: true, duration: 10000, variant: 'alert' },
                 );
             }
         }, 60 * 1000);

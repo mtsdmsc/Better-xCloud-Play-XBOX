@@ -26,6 +26,37 @@
         opacity: 0;
         pointer-events: none;
     }
+
+    &.bx-toast-alert {
+        background: #2b0f12;
+        border: 3px solid #ef4444;
+        box-shadow: 0 0 18px rgba(239, 68, 68, 0.75), 0 4px 16px rgba(0, 0, 0, 0.85);
+        animation: bx-toast-alert-pulse 1.4s ease-in-out infinite;
+
+        .bx-toast-msg {
+            font-size: 15px;
+            font-weight: 700;
+            color: #fff;
+        }
+
+        .bx-toast-status {
+            font-size: 15px;
+            font-weight: 800;
+            background: #dc2626;
+            color: #fff;
+        }
+    }
+}
+
+@keyframes bx-toast-alert-pulse {
+    0%, 100% {
+        border-color: #ef4444;
+        box-shadow: 0 0 14px rgba(239, 68, 68, 0.65), 0 4px 16px rgba(0, 0, 0, 0.85);
+    }
+    50% {
+        border-color: #ff7b7b;
+        box-shadow: 0 0 26px rgba(239, 68, 68, 0.95), 0 4px 16px rgba(0, 0, 0, 0.85);
+    }
 }
 
 .bx-toast-msg {
