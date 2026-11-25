@@ -48,7 +48,7 @@ Com a migração do Xbox Cloud Gaming para o novo domínio `play.xbox.com`, a in
 
 1. Instale a extensão [**Tampermonkey**](https://www.tampermonkey.net/) ou [**Violentmonkey**](https://violentmonkey.github.io/) no seu navegador Desktop.
 2. Clique no link abaixo para instalar o script compilado diretamente deste repositório:
-   - 👉 [**Instalar PlayXbox Enhanced (`better-xcloud.user.js`)**](https://raw.githubusercontent.com/mtsdmsc/PlayXbox-Enhanced/main/dist/better-xcloud.user.js)
+   - 👉 [**Instalar PlayXbox Enhanced (`playxbox-enhanced.user.js`)**](https://raw.githubusercontent.com/mtsdmsc/PlayXbox-Enhanced/main/dist/playxbox-enhanced.user.js)
    - *(Ou baixe a versão mais recente na aba [**Releases**](https://github.com/mtsdmsc/PlayXbox-Enhanced/releases)).*
 3. Acesse [**play.xbox.com**](https://play.xbox.com) e aproveite!
 
@@ -68,9 +68,8 @@ bun run build.ts --version 1.0.0 --meta
 ```
 
 Os arquivos finais serão gerados na pasta `dist/`:
-- `dist/better-xcloud.user.js` (versão de produção)
-- `dist/better-xcloud.pretty.user.js` (versão formatada para leitura/debug)
-- `dist/better-xcloud.meta.js` (metadados de versão)
+- `dist/playxbox-enhanced.user.js` (versão de produção)
+- `dist/playxbox-enhanced.meta.js` (metadados de atualização automática)
 
 ---
 

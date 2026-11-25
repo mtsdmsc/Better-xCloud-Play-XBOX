@@ -198,7 +198,7 @@ async function build(target: BuildTarget, params: { version: string, variant: Bu
     console.log('-- Target:', target);
     const startTime = performance.now();
 
-    let outputScriptName = 'better-xcloud';
+    let outputScriptName = 'playxbox-enhanced';
     if (target !== BuildTarget.ALL) {
         outputScriptName += `.${target}`;
     }

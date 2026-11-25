@@ -11,7 +11,7 @@
 // @exclude      https://www.xbox.com/*/xbox-game-pass/play-day-one
 // @run-at       document-start
 // @grant        none
-// @updateURL    https://raw.githubusercontent.com/mtsdmsc/PlayXbox-Enhanced/main/dist/better-xcloud.meta.js
-// @downloadURL  https://raw.githubusercontent.com/mtsdmsc/PlayXbox-Enhanced/main/dist/better-xcloud.user.js
+// @updateURL    https://raw.githubusercontent.com/mtsdmsc/PlayXbox-Enhanced/main/dist/playxbox-enhanced.meta.js
+// @downloadURL  https://raw.githubusercontent.com/mtsdmsc/PlayXbox-Enhanced/main/dist/playxbox-enhanced.user.js
 // ==/UserScript==
 "use strict";

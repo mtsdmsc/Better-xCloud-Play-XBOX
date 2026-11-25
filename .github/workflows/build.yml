@@ -42,9 +42,8 @@ jobs:
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "tag=v$VERSION" >> $GITHUB_OUTPUT
 
-      - name: Build Userscript (Full + Pretty + Meta)
+      - name: Build Userscript
         run: |
-          bun run build.ts --version "${{ steps.ver.outputs.version }}" --pretty --meta
           bun run build.ts --version "${{ steps.ver.outputs.version }}" --meta
 
       - name: Upload build artifacts
@@ -52,9 +51,8 @@ jobs:
         with:
           name: playxbox-enhanced-v${{ steps.ver.outputs.version }}
           path: |
-            dist/better-xcloud.user.js
-            dist/better-xcloud.pretty.user.js
-            dist/better-xcloud.meta.js
+            dist/playxbox-enhanced.user.js
+            dist/playxbox-enhanced.meta.js
 
       - name: Publish / Attach to GitHub Release
         if: startsWith(github.ref, 'refs/tags/v')
@@ -64,7 +62,5 @@ jobs:
           name: PlayXbox Enhanced ${{ steps.ver.outputs.tag }}
           generate_release_notes: true
           files: |
-            dist/better-xcloud.user.js
-            dist/better-xcloud.pretty.user.js
-            dist/better-xcloud.meta.js
+            dist/playxbox-enhanced.user.js
 
