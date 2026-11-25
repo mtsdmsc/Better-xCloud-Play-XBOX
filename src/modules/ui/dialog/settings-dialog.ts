@@ -1203,6 +1203,7 @@ export class SettingsDialog extends NavigationDialog {
                     this.$btnReload = createButton({
                         icon: BxIcon.REFRESH,
                         title: t('reload-page'),
+                        attributes: { 'data-tooltip': t('reload-page') },
                         style: ButtonStyle.FOCUSABLE | ButtonStyle.DROP_SHADOW,
                         onClick: e => {
                             this.reloadPage();
@@ -1212,6 +1213,7 @@ export class SettingsDialog extends NavigationDialog {
                     createButton({
                         icon: BxIcon.CLOSE,
                         title: `${t('close')} (Alt + Shift + X)`,
+                        attributes: { 'data-tooltip': `${t('close')} (Alt + Shift + X)` },
                         style: ButtonStyle.FOCUSABLE | ButtonStyle.DROP_SHADOW,
                         onClick: e => {
                             this.dialogManager.hide();
