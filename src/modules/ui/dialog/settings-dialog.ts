@@ -67,6 +67,7 @@ type SettingTabSection = {
 
 type SettingTab = {
     icon: BxIconRaw;
+    label?: string;
     group: SettingTabGroup,
     items: Array<SettingTabSection | HTMLElement | false>;
     requiredVariants?: BuildVariant | Array<BuildVariant>;
@@ -648,18 +649,21 @@ export class SettingsDialog extends NavigationDialog {
     protected readonly SETTINGS_UI: Record<SettingTabGroup, SettingTab | false> = {
         global: {
             group: 'global',
-            icon: BxIcon.HOME,
+            label: `${t('better-xcloud')} — ${t('settings')}`,
+            icon: BxIcon.BETTER_XCLOUD,
             items: this.TAB_GLOBAL_ITEMS,
         },
 
         stream: {
             group: 'stream',
+            label: `${t('video')} & ${t('audio')}`,
             icon: BxIcon.DISPLAY,
             items: this.TAB_DISPLAY_ITEMS,
         },
 
         controller: {
             group: 'controller',
+            label: t('controller'),
             icon: BxIcon.CONTROLLER,
             items: this.TAB_CONTROLLER_ITEMS,
             requiredVariants: 'full',
@@ -667,6 +671,7 @@ export class SettingsDialog extends NavigationDialog {
 
         mkb: isFullVersion() && {
             group: 'mkb',
+            label: t('mouse-and-keyboard'),
             icon: BxIcon.NATIVE_MKB,
             items: this.TAB_MKB_ITEMS,
             requiredVariants: 'full',
@@ -674,6 +679,7 @@ export class SettingsDialog extends NavigationDialog {
 
         stats: {
             group: 'stats',
+            label: t('stream-stats'),
             icon: BxIcon.STREAM_STATS,
             items: this.TAB_STATS_ITEMS,
         },
@@ -746,13 +752,17 @@ export class SettingsDialog extends NavigationDialog {
     }
 
     private onTabClicked = (e: Event) => {
-        const $svg = (e.target as SVGElement).closest('svg')!;
+        const $target = (e.target as Element).closest('[data-group]') as HTMLElement | null;
+        if (!$target) {
+            return;
+        }
+        const $svg = ($target.tagName.toLowerCase() === 'svg' ? $target : $target.querySelector('svg') || $target) as unknown as SVGElement;
 
         // Switch tab
         let $child: HTMLElement;
         const children = Array.from(this.$tabContents.children) as HTMLElement[];
         for ($child of children) {
-            if ($child.dataset.tabGroup === $svg.dataset.group) {
+            if ($child.dataset.tabGroup === $target.dataset.group) {
                 // Show tab content
                 $child.classList.remove('bx-gone');
 
@@ -765,13 +775,15 @@ export class SettingsDialog extends NavigationDialog {
         }
 
         // Toggle stream settings selection
-        this.$streamSettingsSelection.classList.toggle('bx-gone', $svg.dataset.group === 'global');
+        this.$streamSettingsSelection.classList.toggle('bx-gone', $target.dataset.group === 'global');
 
         // Highlight current tab button
         for (const $child of Array.from(this.$tabs.children)) {
             $child.classList.remove('bx-active');
+            $child.querySelector('svg')?.classList.remove('bx-active');
         }
 
+        $target.classList.add('bx-active');
         $svg.classList.add('bx-active');
     }
 
@@ -780,8 +792,25 @@ export class SettingsDialog extends NavigationDialog {
         $svg.dataset.group = settingTab.group;
         $svg.tabIndex = 0;
 
-        $svg.addEventListener('click', this.onTabClicked);
-        return $svg;
+        if (settingTab.label) {
+            $svg.setAttribute('aria-label', settingTab.label);
+            $svg.dataset.tooltip = settingTab.label;
+            const $title = document.createElementNS('http://www.w3.org/2000/svg', 'title');
+            $title.textContent = settingTab.label;
+            $svg.prepend($title);
+        }
+
+        const $btn = CE('div', {
+            class: 'bx-tab-item',
+            title: settingTab.label || '',
+            _dataset: {
+                group: settingTab.group,
+                tooltip: settingTab.label || '',
+            },
+        }, $svg);
+
+        $btn.addEventListener('click', this.onTabClicked);
+        return $btn;
     }
 
     private onGlobalSettingChanged = (e: Event) => {
@@ -1173,6 +1202,7 @@ export class SettingsDialog extends NavigationDialog {
                 CE('div', false,
                     this.$btnReload = createButton({
                         icon: BxIcon.REFRESH,
+                        title: t('reload-page'),
                         style: ButtonStyle.FOCUSABLE | ButtonStyle.DROP_SHADOW,
                         onClick: e => {
                             this.reloadPage();
@@ -1181,6 +1211,7 @@ export class SettingsDialog extends NavigationDialog {
 
                     createButton({
                         icon: BxIcon.CLOSE,
+                        title: `${t('close')} (Alt + Shift + X)`,
                         style: ButtonStyle.FOCUSABLE | ButtonStyle.DROP_SHADOW,
                         onClick: e => {
                             this.dialogManager.hide();
