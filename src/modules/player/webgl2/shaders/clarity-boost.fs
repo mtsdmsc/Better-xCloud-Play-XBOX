@@ -26,12 +26,57 @@ uniform float saturation;
 
 out vec4 fragColor;
 
-// Sub-bit spatial dithering to break up 8-bit H.264 color banding in dark gradients
+// Sub-bit spatial dithering (Interleaved Gradient Noise) to break up 8-bit H.264 color banding
 float pxeGradientDither(vec2 pixelPos) {
     return fract(52.9829189 * fract(dot(pixelPos, vec2(0.06711056, 0.00583715)))) - 0.5;
 }
 
-vec3 clarityBoost(sampler2D tex, vec2 coord, vec3 e) {
+// Wide-radius edge-preserving bilateral debanding across H.264 8x8/16x16 macroblocks
+// Smooths staircase color bands in dark gradients while keeping edges/text razor-sharp.
+vec3 pxeDeband(sampler2D tex, vec2 coord, vec3 center, out float bandMask) {
+    // Sample at +/- 2.5 and +/- 5.5 texels (rotated cross + diagonals) to bridge wide color bands
+    vec2 stepNear = texelSize * 2.5;
+    vec2 stepFar  = texelSize * 5.5;
+
+    vec3 n1 = texture(tex, coord + vec2( stepNear.x,  stepNear.y)).rgb;
+    vec3 n2 = texture(tex, coord + vec2(-stepNear.x, -stepNear.y)).rgb;
+    vec3 n3 = texture(tex, coord + vec2(-stepNear.x,  stepNear.y)).rgb;
+    vec3 n4 = texture(tex, coord + vec2( stepNear.x, -stepNear.y)).rgb;
+
+    vec3 f1 = texture(tex, coord + vec2( stepFar.x,  0.0)).rgb;
+    vec3 f2 = texture(tex, coord + vec2(-stepFar.x,  0.0)).rgb;
+    vec3 f3 = texture(tex, coord + vec2( 0.0,  stepFar.y)).rgb;
+    vec3 f4 = texture(tex, coord + vec2( 0.0, -stepFar.y)).rgb;
+
+    vec3 avgNear = (n1 + n2 + n3 + n4) * 0.25;
+    vec3 avgFar  = (f1 + f2 + f3 + f4) * 0.25;
+    vec3 avgWide = mix(avgNear, avgFar, 0.45);
+
+    // Measure max per-channel difference and luma difference vs center
+    vec3 diffNear = abs(center - avgNear);
+    vec3 diffFar  = abs(center - avgFar);
+    float maxDiff = max(
+        max(diffNear.r, max(diffNear.g, diffNear.b)),
+        max(diffFar.r,  max(diffFar.g,  diffFar.b))
+    );
+
+    // Darker areas suffer much more from 8-bit YUV->RGB quantization banding
+    float luma = dot(center, LUMA709);
+    float darkBoost = mix(1.45, 0.85, smoothstep(0.05, 0.55, luma));
+    float threshold = 0.026 * darkBoost;
+
+    // 1.0 in shallow banding staircases, 0.0 on real texture/UI edges
+    bandMask = 1.0 - smoothstep(threshold * 0.35, threshold, maxDiff);
+
+    vec3 debanded = mix(center, avgWide, bandMask * 0.68);
+    // Add triangular-like sub-bit dither (~1.15 / 255) proportional to flat gradient strength
+    float dither = pxeGradientDither(gl_FragCoord.xy) + pxeGradientDither(gl_FragCoord.xy + vec2(17.3, 31.7)) * 0.5;
+    debanded += dither * (1.1 / 255.0) * (0.35 + 0.65 * bandMask);
+
+    return clamp(debanded, 0.0, 1.0);
+}
+
+vec3 clarityBoost(sampler2D tex, vec2 coord, vec3 e, float bandMask) {
     // Load a collection of samples in a 3x3 neighborhood, where e is the current pixel.
     // a b c
     // d e f
@@ -53,25 +98,10 @@ vec3 clarityBoost(sampler2D tex, vec2 coord, vec3 e) {
         i = texture(tex, coord + texelSize * vec2(1, -1)).rgb;
     }
 
-    // In Quality Mode, apply edge-preserving compression deblocking & debanding on flat gradients
-    // before sharpening so H.264 macroblock steps and dark-scene color bands are smoothed out.
-    if (qualityMode) {
-        vec3 crossMin = min(min(min(d, e), min(f, b)), h);
-        vec3 crossMax = max(max(max(d, e), max(f, b)), h);
-        vec3 diagMin = min(min(a, c), min(g, i));
-        vec3 diagMax = max(max(a, c), max(g, i));
-        vec3 boxMin = min(crossMin, diagMin);
-        vec3 boxMax = max(crossMax, diagMax);
-
-        float localLumaSpan = dot(boxMax - boxMin, LUMA709);
-        // Smooth only shallow quantization steps (< 4.2% luma contrast), preserving real texture edges
-        float flatWeight = 1.0 - smoothstep(0.006, 0.042, localLumaSpan);
-        if (flatWeight > 0.0) {
-            vec3 neighborhoodMean = ((b + d + f + h) * 2.0 + (a + c + g + i)) / 12.0;
-            e = mix(e, neighborhoodMean, flatWeight * 0.55);
-            e += pxeGradientDither(gl_FragCoord.xy) * (0.6 / 255.0) * flatWeight;
-            e = clamp(e, 0.0, 1.0);
-        }
+    // Attenuate sharpening inside flat gradient bands so CAS/USM never re-amplifies 8-bit color steps
+    float effectiveSharpen = sharpenFactor * (1.0 - bandMask * 0.78);
+    if (effectiveSharpen <= 0.001) {
+        return e;
     }
 
     // USM
@@ -80,7 +110,7 @@ vec3 clarityBoost(sampler2D tex, vec2 coord, vec3 e) {
         gaussianBlur /= 16.0;
 
         // Return edge detection
-        return e + (e - gaussianBlur) * sharpenFactor / 3.0;
+        return e + (e - gaussianBlur) * effectiveSharpen / 3.0;
     }
 
     // CAS
@@ -118,7 +148,7 @@ vec3 clarityBoost(sampler2D tex, vec2 coord, vec3 e) {
     vec3 window = b + d + f + h;
     vec3 outColor = clamp((window * weightRgb + e) * reciprocalWeightRgb, 0.0, 1.0);
 
-    return mix(e, outColor, sharpenFactor / 2.0);
+    return mix(e, outColor, effectiveSharpen / 2.0);
 }
 
 void main() {
@@ -128,9 +158,13 @@ void main() {
     // Get current pixel
     vec3 color = texture(data, uv).rgb;
 
-    // Clarity boost
+    // Wide-radius debanding & sub-bit gradient dithering (always active in WebGL2 renderer)
+    float bandMask = 0.0;
+    color = pxeDeband(data, uv, color, bandMask);
+
+    // Clarity boost (attenuated on flat gradient bands, full strength on real details/edges)
     if (sharpenFactor > 0.0) {
-        color = clarityBoost(data, uv, color);
+        color = clarityBoost(data, uv, color, bandMask);
     }
 
     // Saturation

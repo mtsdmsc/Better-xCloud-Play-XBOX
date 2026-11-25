@@ -33,10 +33,53 @@ fn vsMain(@location(0) pos: vec2<f32>) -> VertexOutput {
 }
 
 
-fn clarityBoost(coord: vec2<f32>, texSize: vec2<f32>, e: vec3<f32>) -> vec3<f32> {
+fn pxeGradientDither(pixelPos: vec2<f32>) -> f32 {
+    return fract(52.9829189 * fract(dot(pixelPos, vec2(0.06711056, 0.00583715)))) - 0.5;
+}
+
+fn clarityBoost(coord: vec2<f32>, texSize: vec2<f32>, pixelPos: vec2<f32>, rawCenter: vec3<f32>) -> vec3<f32> {
     let texelSize = 1.0 / texSize;
 
-    // Load 3x3 neighborhood samples
+    // Wide-radius bilateral debanding across 8x8/16x16 H.264 macroblocks (+/- 2.5 and +/- 5.5 texels)
+    let stepNear = texelSize * 2.5;
+    let stepFar  = texelSize * 5.5;
+
+    let n1 = textureSampleBaseClampToEdge(ourTexture, ourSampler, coord + vec2( stepNear.x,  stepNear.y)).rgb;
+    let n2 = textureSampleBaseClampToEdge(ourTexture, ourSampler, coord + vec2(-stepNear.x, -stepNear.y)).rgb;
+    let n3 = textureSampleBaseClampToEdge(ourTexture, ourSampler, coord + vec2(-stepNear.x,  stepNear.y)).rgb;
+    let n4 = textureSampleBaseClampToEdge(ourTexture, ourSampler, coord + vec2( stepNear.x, -stepNear.y)).rgb;
+
+    let f1 = textureSampleBaseClampToEdge(ourTexture, ourSampler, coord + vec2( stepFar.x,  0.0)).rgb;
+    let f2 = textureSampleBaseClampToEdge(ourTexture, ourSampler, coord + vec2(-stepFar.x,  0.0)).rgb;
+    let f3 = textureSampleBaseClampToEdge(ourTexture, ourSampler, coord + vec2( 0.0,  stepFar.y)).rgb;
+    let f4 = textureSampleBaseClampToEdge(ourTexture, ourSampler, coord + vec2( 0.0, -stepFar.y)).rgb;
+
+    let avgNear = (n1 + n2 + n3 + n4) * 0.25;
+    let avgFar  = (f1 + f2 + f3 + f4) * 0.25;
+    let avgWide = mix(avgNear, avgFar, 0.45);
+
+    let diffNear = abs(rawCenter - avgNear);
+    let diffFar  = abs(rawCenter - avgFar);
+    let maxDiff = max(
+        max(diffNear.r, max(diffNear.g, diffNear.b)),
+        max(diffFar.r,  max(diffFar.g,  diffFar.b))
+    );
+
+    let luma = dot(rawCenter, LUMINOSITY_FACTOR);
+    let darkBoost = mix(1.45, 0.85, smoothstep(0.05, 0.55, luma));
+    let threshold = 0.026 * darkBoost;
+    let bandMask = 1.0 - smoothstep(threshold * 0.35, threshold, maxDiff);
+
+    var cleanedCenter = mix(rawCenter, avgWide, bandMask * 0.68);
+    let dither = pxeGradientDither(pixelPos) + pxeGradientDither(pixelPos + vec2(17.3, 31.7)) * 0.5;
+    cleanedCenter = clamp(cleanedCenter + dither * (1.1 / 255.0) * (0.35 + 0.65 * bandMask), vec3(0.0), vec3(1.0));
+
+    let effectiveSharpen = ourParams.sharpness * (1.0 - bandMask * 0.78);
+    if effectiveSharpen <= 0.001 {
+        return cleanedCenter;
+    }
+
+    // Load 3x3 neighborhood samples for sharpening
     let a = textureSampleBaseClampToEdge(ourTexture, ourSampler, coord + texelSize * vec2(-1.0,  1.0)).rgb;
     let b = textureSampleBaseClampToEdge(ourTexture, ourSampler, coord + texelSize * vec2( 0.0,  1.0)).rgb;
     let c = textureSampleBaseClampToEdge(ourTexture, ourSampler, coord + texelSize * vec2( 1.0,  1.0)).rgb;
@@ -48,24 +91,16 @@ fn clarityBoost(coord: vec2<f32>, texSize: vec2<f32>, e: vec3<f32>) -> vec3<f32>
     let h = textureSampleBaseClampToEdge(ourTexture, ourSampler, coord + texelSize * vec2( 0.0, -1.0)).rgb;
     let i = textureSampleBaseClampToEdge(ourTexture, ourSampler, coord + texelSize * vec2( 1.0, -1.0)).rgb;
 
-    // Edge-preserving compression debanding on flat gradients before sharpening
-    let crossMin = min(min(min(d, e), min(f, b)), h);
-    let crossMax = max(max(max(d, e), max(f, b)), h);
-    let boxMin = min(crossMin, min(min(a, c), min(g, i)));
-    let boxMax = max(crossMax, max(max(a, c), max(g, i)));
-    let localLumaSpan = dot(boxMax - boxMin, LUMINOSITY_FACTOR);
-    let flatWeight = 1.0 - smoothstep(0.006, 0.042, localLumaSpan);
-    let neighborhoodMean = ((b + d + f + h) * 2.0 + (a + c + g + i)) / 12.0;
-    let cleanedCenter = mix(e, neighborhoodMean, flatWeight * 0.5);
-
     // Unsharp Masking (USM)
     if ourParams.filterId == FILTER_UNSHARP_MASKING {
         let gaussianBlur = (a + c + g + i) * 1.0 + (b + d + f + h) * 2.0 + cleanedCenter * 4.0;
         let blurred = gaussianBlur / 16.0;
-        return cleanedCenter + (cleanedCenter - blurred) * (ourParams.sharpness / 3.0);
+        return cleanedCenter + (cleanedCenter - blurred) * (effectiveSharpen / 3.0);
     }
 
     // Contrast Adaptive Sharpening (CAS)
+    let crossMin = min(min(min(d, cleanedCenter), min(f, b)), h);
+    let crossMax = max(max(max(d, cleanedCenter), max(f, b)), h);
     let minRgb = crossMin + min(min(a, c), min(g, i));
     let maxRgb = crossMax + max(max(a, c), max(g, i));
 
@@ -79,7 +114,7 @@ fn clarityBoost(coord: vec2<f32>, texSize: vec2<f32>, e: vec3<f32>) -> vec3<f32>
     let window = b + d + f + h;
     let outColor = clamp((window * weightRgb + cleanedCenter) * reciprocalWeightRgb, vec3(0.0), vec3(1.0));
 
-    return mix(cleanedCenter, outColor, ourParams.sharpness / 2.0);
+    return mix(cleanedCenter, outColor, effectiveSharpen / 2.0);
 }
 
 
@@ -87,7 +122,7 @@ fn clarityBoost(coord: vec2<f32>, texSize: vec2<f32>, e: vec3<f32>) -> vec3<f32>
 fn fsMain(input: VertexOutput) -> @location(0) vec4<f32> {
     let texSize = vec2<f32>(textureDimensions(ourTexture));
     let center = textureSampleBaseClampToEdge(ourTexture, ourSampler, input.uv);
-    var adjustedRgb = clarityBoost(input.uv, texSize, center.rgb);
+    var adjustedRgb = clarityBoost(input.uv, texSize, input.position.xy, center.rgb);
 
     // Compute grayscale intensity
     let gray = dot(adjustedRgb, LUMINOSITY_FACTOR);
