@@ -128,7 +128,7 @@ if (!IS_NEW_SITE && isFullVersion() && BX_FLAGS.SafariWorkaround && document.rea
         $secondaryAction = CE('p', false, t('settings-reloading'));
     } else {
         $secondaryAction = CE('a', {
-            href: 'https://github.com/mtsdmsc/Better-xCloud-Play-XBOX/issues',
+            href: 'https://github.com/mtsdmsc/PlayXbox-Enhanced/issues',
             target: '_blank',
         }, '🤓 ' + t('how-to-fix'));
     }

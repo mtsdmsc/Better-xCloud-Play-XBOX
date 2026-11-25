@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         PlayXbox Enhanced (Desktop)
-// @namespace    https://github.com/mtsdmsc/Better-xCloud-Play-XBOX
-// @version      1.4.1
+// @namespace    https://github.com/mtsdmsc/PlayXbox-Enhanced
+// @version      1.4.2
 // @description  Enhance Xbox Cloud Gaming (xCloud) on Desktop browsers at play.xbox.com and xbox.com/play (by Mateus Damasceno / Based on Better xCloud by redphx)
 // @author       Mateus Damasceno (mtsdmsc), redphx
 // @license      MIT
@@ -11,8 +11,8 @@
 // @exclude      https://www.xbox.com/*/xbox-game-pass/play-day-one
 // @run-at       document-start
 // @grant        none
-// @updateURL    https://raw.githubusercontent.com/mtsdmsc/Better-xCloud-Play-XBOX/main/dist/better-xcloud.meta.js
-// @downloadURL  https://raw.githubusercontent.com/mtsdmsc/Better-xCloud-Play-XBOX/main/dist/better-xcloud.user.js
+// @updateURL    https://raw.githubusercontent.com/mtsdmsc/PlayXbox-Enhanced/main/dist/better-xcloud.meta.js
+// @downloadURL  https://raw.githubusercontent.com/mtsdmsc/PlayXbox-Enhanced/main/dist/better-xcloud.user.js
 // ==/UserScript==
 "use strict";
 class BxLogger {
@@ -199,7 +199,7 @@ class UserAgent {
   } catch (e) {}
  }
 }
-var SCRIPT_VERSION = "1.4.1", SCRIPT_VARIANT = "full", AppInterface = window.AppInterface;
+var SCRIPT_VERSION = "1.4.2", SCRIPT_VARIANT = "full", AppInterface = window.AppInterface;
 UserAgent.init();
 var userAgent = window.navigator.userAgent.toLowerCase(), isTv = userAgent.includes("smart-tv") || userAgent.includes("smarttv") || /\baft.*\b/.test(userAgent), isVr = window.navigator.userAgent.includes("VR") && window.navigator.userAgent.includes("OculusBrowser"), browserHasTouchSupport = "ontouchstart" in window || navigator.maxTouchPoints > 0, userAgentHasTouchSupport = !isTv && !isVr && browserHasTouchSupport, STATES = {
  supportedRegion: !0,
@@ -3224,7 +3224,7 @@ function setPref(prefKey, value, origin) {
 function checkForUpdate() {
  if (SCRIPT_VERSION.includes("beta")) return;
  if (window.location.hostname === "play.xbox.com") return;
- fetch("https://api.github.com/repos/mtsdmsc/Better-xCloud-Play-XBOX/releases/latest").then((response) => response.json()).then((json) => {
+ fetch("https://api.github.com/repos/mtsdmsc/PlayXbox-Enhanced/releases/latest").then((response) => response.json()).then((json) => {
   if (json && json.tag_name) {
    let latestVer = json.tag_name.startsWith("v") ? json.tag_name.substring(1) : json.tag_name;
    setGlobalPref("version.latest", latestVer, "direct"), setGlobalPref("version.current", SCRIPT_VERSION, "direct");
@@ -8091,7 +8091,7 @@ class SettingsDialog extends NavigationDialog {
       style: 1 | 64 | 128
      };
      if (AppInterface && AppInterface.updateLatestScript) opts.onClick = (e) => AppInterface.updateLatestScript();
-     else opts.url = "https://github.com/mtsdmsc/Better-xCloud-Play-XBOX/releases/latest";
+     else opts.url = "https://github.com/mtsdmsc/PlayXbox-Enhanced/releases/latest";
      topButtons.push(createButton(opts));
     }
     this.$btnGlobalReload = createButton({
@@ -8290,7 +8290,7 @@ class SettingsDialog extends NavigationDialog {
     $parent.appendChild(CE("div", {
      class: "bx-port-footer"
     }, CE("div", !1, `PlayXbox Enhanced v${SCRIPT_VERSION} by `, CE("a", {
-     href: "https://github.com/mtsdmsc/Better-xCloud-Play-XBOX",
+     href: "https://github.com/mtsdmsc/PlayXbox-Enhanced",
      target: "_blank",
      tabindex: 0
     }, "@mtsdmsc"), " • Base: ", CE("a", {
@@ -8298,7 +8298,7 @@ class SettingsDialog extends NavigationDialog {
      target: "_blank",
      tabindex: 0
     }, "Better xCloud (@redphx)")), CE("div", { class: "bx-port-footer-links" }, CE("a", {
-     href: "https://github.com/mtsdmsc/Better-xCloud-Play-XBOX/issues",
+     href: "https://github.com/mtsdmsc/PlayXbox-Enhanced/issues",
      target: "_blank",
      tabindex: 0
     }, `🐞 ${t("report-bug")}`), " • ", CE("a", {
@@ -8688,7 +8688,7 @@ class SettingsDialog extends NavigationDialog {
     label = createButton({
      icon: BxIcon.BETTER_XCLOUD,
      label,
-     url: "https://github.com/mtsdmsc/Better-xCloud-Play-XBOX/releases",
+     url: "https://github.com/mtsdmsc/PlayXbox-Enhanced/releases",
      style: 4096 | 16 | 64
     });
    }
@@ -11715,7 +11715,7 @@ if (!IS_NEW_SITE && !0 && BX_FLAGS.SafariWorkaround && document.readyState !== "
  let isSafari = UserAgent.isSafari(), $secondaryAction;
  if (isSafari) $secondaryAction = CE("p", !1, t("settings-reloading"));
  else $secondaryAction = CE("a", {
-   href: "https://github.com/mtsdmsc/Better-xCloud-Play-XBOX/issues",
+   href: "https://github.com/mtsdmsc/PlayXbox-Enhanced/issues",
    target: "_blank"
   }, "🤓 " + t("how-to-fix"));
  let $fragment = document.createDocumentFragment();

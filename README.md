@@ -3,11 +3,11 @@
     <h1>PlayXbox Enhanced</h1>
     <p><strong>Aprimoramentos para o Xbox Cloud Gaming no navegador Desktop (<code>play.xbox.com</code>)</strong></p>
     <!-- Latest Version Badge -->
-    <a href="https://github.com/mtsdmsc/Better-xCloud-Play-XBOX/releases"><img src="https://img.shields.io/github/v/release/mtsdmsc/Better-xCloud-Play-XBOX?label=latest" alt="Latest version" /></a>
+    <a href="https://github.com/mtsdmsc/PlayXbox-Enhanced/releases"><img src="https://img.shields.io/github/v/release/mtsdmsc/PlayXbox-Enhanced?label=latest" alt="Latest version" /></a>
     <!-- Total Downloads Badge -->
-    <a href="https://github.com/mtsdmsc/Better-xCloud-Play-XBOX/releases"><img src="https://img.shields.io/github/downloads/mtsdmsc/Better-xCloud-Play-XBOX/total?color=%23e15f2c" alt="Total downloads" /></a>
+    <a href="https://github.com/mtsdmsc/PlayXbox-Enhanced/releases"><img src="https://img.shields.io/github/downloads/mtsdmsc/PlayXbox-Enhanced/total?color=%23e15f2c" alt="Total downloads" /></a>
     <!-- Total Stars Badge -->
-    <a href="https://github.com/mtsdmsc/Better-xCloud-Play-XBOX/stargazers"><img src="https://img.shields.io/github/stars/mtsdmsc/Better-xCloud-Play-XBOX?color=%23cca400" alt="Total stars" /></a>
+    <a href="https://github.com/mtsdmsc/PlayXbox-Enhanced/stargazers"><img src="https://img.shields.io/github/stars/mtsdmsc/PlayXbox-Enhanced?color=%23cca400" alt="Total stars" /></a>
 </div>
 
 ---
@@ -48,8 +48,8 @@ Com a migração do Xbox Cloud Gaming para o novo domínio `play.xbox.com`, a in
 
 1. Instale a extensão [**Tampermonkey**](https://www.tampermonkey.net/) ou [**Violentmonkey**](https://violentmonkey.github.io/) no seu navegador Desktop.
 2. Clique no link abaixo para instalar o script compilado diretamente deste repositório:
-   - 👉 [**Instalar PlayXbox Enhanced (`better-xcloud.user.js`)**](https://raw.githubusercontent.com/mtsdmsc/Better-xCloud-Play-XBOX/main/dist/better-xcloud.user.js)
-   - *(Ou baixe a versão mais recente na aba [**Releases**](https://github.com/mtsdmsc/Better-xCloud-Play-XBOX/releases)).*
+   - 👉 [**Instalar PlayXbox Enhanced (`better-xcloud.user.js`)**](https://raw.githubusercontent.com/mtsdmsc/PlayXbox-Enhanced/main/dist/better-xcloud.user.js)
+   - *(Ou baixe a versão mais recente na aba [**Releases**](https://github.com/mtsdmsc/PlayXbox-Enhanced/releases)).*
 3. Acesse [**play.xbox.com**](https://play.xbox.com) e aproveite!
 
 ---
@@ -87,7 +87,7 @@ O mapeamento arquitetural, diagnóstico de DOM/rede, refatoração dos módulos 
 
 ### Porte Desktop para `play.xbox.com`
 - **Mateus Damasceno** — [@mtsdmsc](https://github.com/mtsdmsc)
-- **Repositório do Porte:** [github.com/mtsdmsc/Better-xCloud-Play-XBOX](https://github.com/mtsdmsc/Better-xCloud-Play-XBOX)
+- **Repositório do Porte:** [github.com/mtsdmsc/PlayXbox-Enhanced](https://github.com/mtsdmsc/PlayXbox-Enhanced)
 
 ### Criador Original do Better xCloud
 Todo o mérito pela concepção, arquitetura base e desenvolvimento original do **Better xCloud** pertence a:
@@ -106,5 +106,5 @@ Todo o mérito pela concepção, arquitetura base e desenvolvimento original do 
 
 ## ⚠️ Avisos Legais (Disclaimers)
 - Use por sua própria conta e risco.
-- Ao relatar bugs específicos deste porte Desktop para o `play.xbox.com`, abra uma [Issue neste repositório](https://github.com/mtsdmsc/Better-xCloud-Play-XBOX/issues) (não reporte problemas deste fork nos canais oficiais do `@redphx` ou no `/r/xcloud`).
+- Ao relatar bugs específicos deste porte Desktop para o `play.xbox.com`, abra uma [Issue neste repositório](https://github.com/mtsdmsc/PlayXbox-Enhanced/issues) (não reporte problemas deste fork nos canais oficiais do `@redphx` ou no `/r/xcloud`).
 - Este projeto não possui qualquer afiliação com a Microsoft ou Xbox. Todos os logotipos, ícones e marcas registradas do Xbox pertencem aos seus respectivos proprietários.

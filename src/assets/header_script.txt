@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         PlayXbox Enhanced (Desktop)
-// @namespace    https://github.com/mtsdmsc/Better-xCloud-Play-XBOX
+// @namespace    https://github.com/mtsdmsc/PlayXbox-Enhanced
 // @version      [[VERSION]]
 // @description  Enhance Xbox Cloud Gaming (xCloud) on Desktop browsers at play.xbox.com and xbox.com/play (by Mateus Damasceno / Based on Better xCloud by redphx)
 // @author       Mateus Damasceno (mtsdmsc), redphx
@@ -11,7 +11,7 @@
 // @exclude      https://www.xbox.com/*/xbox-game-pass/play-day-one
 // @run-at       document-start
 // @grant        none
-// @updateURL    https://raw.githubusercontent.com/mtsdmsc/Better-xCloud-Play-XBOX/main/dist/better-xcloud.meta.js
-// @downloadURL  https://raw.githubusercontent.com/mtsdmsc/Better-xCloud-Play-XBOX/main/dist/better-xcloud.user.js
+// @updateURL    https://raw.githubusercontent.com/mtsdmsc/PlayXbox-Enhanced/main/dist/better-xcloud.meta.js
+// @downloadURL  https://raw.githubusercontent.com/mtsdmsc/PlayXbox-Enhanced/main/dist/better-xcloud.user.js
 // ==/UserScript==
 "use strict";

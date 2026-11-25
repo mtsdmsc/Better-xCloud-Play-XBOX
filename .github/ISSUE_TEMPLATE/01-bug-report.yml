@@ -19,7 +19,7 @@ body:
       options:
         - label: Confirmo que estou utilizando um navegador **Desktop** (Windows, macOS, Linux ou SteamOS).
           required: true
-        - label: Pesquisei nas [**issues abertas e fechadas**](https://github.com/mtsdmsc/Better-xCloud-Play-XBOX/issues?q=is%3Aissue) para verificar se o problema já foi reportado.
+        - label: Pesquisei nas [**issues abertas e fechadas**](https://github.com/mtsdmsc/PlayXbox-Enhanced/issues?q=is%3Aissue) para verificar se o problema já foi reportado.
           required: true
         - label: Descreverei o problema com o máximo de detalhes possível.
           required: true

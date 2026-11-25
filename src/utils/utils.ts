@@ -22,7 +22,7 @@ export function checkForUpdate() {
     }
 
     // Always check for new version
-    fetch('https://api.github.com/repos/mtsdmsc/Better-xCloud-Play-XBOX/releases/latest')
+    fetch('https://api.github.com/repos/mtsdmsc/PlayXbox-Enhanced/releases/latest')
         .then(response => response.json())
         .then(json => {
             if (json && json.tag_name) {

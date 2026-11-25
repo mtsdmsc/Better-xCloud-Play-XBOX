@@ -1,5 +1,5 @@
 // ==UserScript==
 // @name         PlayXbox Enhanced (Desktop)
-// @namespace    https://github.com/mtsdmsc/Better-xCloud-Play-XBOX
-// @version      1.4.1
+// @namespace    https://github.com/mtsdmsc/PlayXbox-Enhanced
+// @version      1.4.2
 // ==/UserScript==

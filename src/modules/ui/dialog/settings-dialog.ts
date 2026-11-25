@@ -123,7 +123,7 @@ export class SettingsDialog extends NavigationDialog {
                     if (AppInterface && AppInterface.updateLatestScript) {
                         opts.onClick = e => AppInterface.updateLatestScript();
                     } else {
-                        opts.url = 'https://github.com/mtsdmsc/Better-xCloud-Play-XBOX/releases/latest';
+                        opts.url = 'https://github.com/mtsdmsc/PlayXbox-Enhanced/releases/latest';
                     }
 
                     topButtons.push(createButton(opts));
@@ -392,7 +392,7 @@ export class SettingsDialog extends NavigationDialog {
                     CE('div', false,
                         `PlayXbox Enhanced v${SCRIPT_VERSION} by `,
                         CE('a', {
-                            href: 'https://github.com/mtsdmsc/Better-xCloud-Play-XBOX',
+                            href: 'https://github.com/mtsdmsc/PlayXbox-Enhanced',
                             target: '_blank',
                             tabindex: 0,
                         }, '@mtsdmsc'),
@@ -405,7 +405,7 @@ export class SettingsDialog extends NavigationDialog {
                     ),
                     CE('div', { class: 'bx-port-footer-links' },
                         CE('a', {
-                            href: 'https://github.com/mtsdmsc/Better-xCloud-Play-XBOX/issues',
+                            href: 'https://github.com/mtsdmsc/PlayXbox-Enhanced/issues',
                             target: '_blank',
                             tabindex: 0,
                         }, `🐞 ${t('report-bug')}`),
@@ -1076,7 +1076,7 @@ export class SettingsDialog extends NavigationDialog {
                 label = createButton({
                     icon: BxIcon.BETTER_XCLOUD,
                     label: label,
-                    url: 'https://github.com/mtsdmsc/Better-xCloud-Play-XBOX/releases',
+                    url: 'https://github.com/mtsdmsc/PlayXbox-Enhanced/releases',
                     style: ButtonStyle.NORMAL_CASE | ButtonStyle.FROSTED | ButtonStyle.FOCUSABLE,
                 });
             }
