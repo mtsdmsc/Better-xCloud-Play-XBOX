@@ -19,14 +19,14 @@ export enum PrompFont {
     RIGHT = 'D→',
 
     LS = 'LS',
-    L3 = 'L3',
+    L3 = 'LSB',
     LS_UP = 'LS↑',
     LS_DOWN = 'LS↓',
     LS_LEFT = 'LS←',
     LS_RIGHT = 'LS→',
 
     RS = 'RS',
-    R3 = 'R3',
+    R3 = 'RSB',
     RS_UP = 'RS↑',
     RS_DOWN = 'RS↓',
     RS_LEFT = 'RS←',
