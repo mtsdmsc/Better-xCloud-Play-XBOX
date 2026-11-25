@@ -58,7 +58,6 @@ export class GameBar {
 
         this.actions = [
             new ScreenshotAction(),
-            ...(STATES.userAgent.capabilities.touch && (getGlobalPref(GlobalPref.TOUCH_CONTROLLER_MODE) !== TouchControllerMode.OFF) ? [new TouchControlAction()] : []),
             new SpeakerAction(),
             new RendererAction(),
             new MicrophoneAction(),

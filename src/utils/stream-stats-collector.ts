@@ -219,7 +219,8 @@ export class StreamStatsCollector {
     }
 
     async collect() {
-        const stats = await STATES.currentStream.peerConnection?.getStats();
+        const pc = STATES.currentStream.peerConnection as any;
+        const stats: RTCStatsReport | undefined = await (pc?.__pxeNativeGetStats ? pc.__pxeNativeGetStats() : pc?.getStats());
         if (!stats) {
             return;
         }

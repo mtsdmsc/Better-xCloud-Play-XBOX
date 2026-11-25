@@ -10,7 +10,7 @@ import { generateMsDeviceInfo, getOsNameFromResolution, patchIceCandidates } fro
 import { getPreferredServerRegion } from "./region";
 import { BypassServerIps } from "@/enums/bypass-servers";
 import { GlobalPref, StreamPref } from "@/enums/pref-keys";
-import { NativeMkbMode, TouchControllerMode } from "@/enums/pref-values";
+import { NativeMkbMode, StreamResolution, TouchControllerMode } from "@/enums/pref-values";
 import { BxEventBus } from "./bx-event-bus";
 import { getGlobalPref, getStreamPref } from "./pref-utils";
 
@@ -182,6 +182,11 @@ export class XcloudInterceptor {
         // Force stream's resolution
         if (PREF_STREAM_TARGET_RESOLUTION !== 'auto') {
             const osName = getOsNameFromResolution(PREF_STREAM_TARGET_RESOLUTION);
+            const isQhd = PREF_STREAM_TARGET_RESOLUTION === StreamResolution.DIM_1440P;
+            const targetDimensions = isQhd
+                ? { widthInPixels: 2560, heightInPixels: 1440 }
+                : { widthInPixels: 4096, heightInPixels: 2160 };
+
             // Preserve play.xbox.com's modern clientAppVersion/clientSdkVersion if x-ms-device-info already exists
             let deviceInfo: any = null;
             const existingHeaderKey = Object.keys(headers).find(k => k.toLowerCase() === 'x-ms-device-info');
@@ -191,14 +196,18 @@ export class XcloudInterceptor {
                     deviceInfo.dev = deviceInfo.dev || {};
                     deviceInfo.dev.os = Object.assign({}, deviceInfo.dev.os, { name: osName, platform: 'desktop' });
                     deviceInfo.dev.displayInfo = Object.assign({}, deviceInfo.dev.displayInfo, {
-                        dimensions: { widthInPixels: 4096, heightInPixels: 2160 },
+                        dimensions: targetDimensions,
                         pixelDensity: { dpiX: 1, dpiY: 1 },
                     });
                 } catch (e) {
                     deviceInfo = null;
                 }
             }
-            headers[existingHeaderKey || 'x-ms-device-info'] = JSON.stringify(deviceInfo || generateMsDeviceInfo(osName));
+            const fallbackInfo = generateMsDeviceInfo(osName);
+            if (isQhd) {
+                fallbackInfo.dev.displayInfo.dimensions = targetDimensions;
+            }
+            headers[existingHeaderKey || 'x-ms-device-info'] = JSON.stringify(deviceInfo || fallbackInfo);
             body.settings.osName = osName;
         }
 
@@ -240,15 +249,8 @@ export class XcloudInterceptor {
             return NATIVE_FETCH(request, init);
         }
 
-        // Touch controller for all games
-        if (isFullVersion() && getGlobalPref(GlobalPref.TOUCH_CONTROLLER_MODE) === TouchControllerMode.ALL) {
-            const titleInfo = STATES.currentStream.titleInfo;
-            if (titleInfo?.details.hasTouchSupport) {
-                TouchController.disable();
-            } else {
-                TouchController.enable();
-            }
-        }
+        // Desktop-only build: never inject virtual touch controller overlay on touch screens (tablets/2-in-1 PCs)
+        TouchController.disable();
 
         // Intercept configurations
         const response = await NATIVE_FETCH(request, init);
@@ -264,6 +266,8 @@ export class XcloudInterceptor {
 
         overrides.inputConfiguration = overrides.inputConfiguration || {};
         overrides.inputConfiguration.enableVibration = true;
+        overrides.inputConfiguration.enableTouchInput = false;
+        overrides.inputConfiguration.maxTouchPoints = 0;
 
         // https://github.com/redphx/better-xcloud/issues/914#issuecomment-4400078173
         if (getStreamPref(StreamPref.LOCAL_CO_OP_ENABLED)) {

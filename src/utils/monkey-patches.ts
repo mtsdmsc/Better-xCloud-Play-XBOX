@@ -4,7 +4,7 @@ import { BxLogger } from "@utils/bx-logger";
 import { patchSdpBitrate, patchSdpBitrateHints, setCodecPreferences } from "./sdp";
 import { StreamPlayerManager } from "@/modules/stream-player-manager";
 import { GlobalPref, StreamPref } from "@/enums/pref-keys";
-import { CodecProfile } from "@/enums/pref-values";
+import { CodecProfile, StreamResolution } from "@/enums/pref-values";
 import type { SettingDefinition } from "@/types/setting-definition";
 import { BxEventBus } from "./bx-event-bus";
 import { getGlobalPref, getGlobalPrefDefinition, getStreamPref } from "@/utils/pref-utils";
@@ -177,6 +177,167 @@ export function patchRtcPeerConnection() {
             BxLogger.info('connectionstatechange', conn.connectionState);
         });
         return conn;
+    };
+
+    // Govern reported WebRTC inbound video decode time when "Prevent resolution drops" is active.
+    // play.xbox.com's WebRtcStreamV1 reads totalDecodeTime / framesDecoded from getStats() and asks
+    // the server to downscale 1080p -> 720p if decode time spikes. Our own StreamStatsCollector
+    // uses __pxeNativeGetStats so the HUD always shows the true hardware decode time.
+    if (getGlobalPref(GlobalPref.STREAM_PREVENT_RESOLUTION_DROPS)) {
+        const MAX_DECODE_SEC_PER_FRAME = 0.0075; // 7.5 ms per frame ceiling
+        type DecodeBudgetTrack = { prevFrames: number; prevRawSec: number; governedSec: number };
+        const receiverBudgets = new WeakMap<object, Map<string, DecodeBudgetTrack>>();
+
+        const governStatsReport = (holder: object, rawReport: RTCStatsReport): RTCStatsReport => {
+            let trackMap = receiverBudgets.get(holder);
+            if (!trackMap) {
+                trackMap = new Map();
+                receiverBudgets.set(holder, trackMap);
+            }
+
+            let modified = false;
+            const entries = new Map<string, any>();
+
+            rawReport.forEach((stat: any, id: string) => {
+                if (
+                    stat &&
+                    stat.type === 'inbound-rtp' &&
+                    (stat.kind === 'video' || stat.mediaType === 'video') &&
+                    typeof stat.framesDecoded === 'number' &&
+                    stat.framesDecoded > 0 &&
+                    typeof stat.totalDecodeTime === 'number'
+                ) {
+                    const frames = stat.framesDecoded;
+                    const rawSec = stat.totalDecodeTime;
+                    const prev = trackMap!.get(id);
+                    let nextGovernedSec: number;
+
+                    if (!prev || frames < prev.prevFrames || rawSec < prev.prevRawSec) {
+                        nextGovernedSec = Math.min(rawSec, frames * MAX_DECODE_SEC_PER_FRAME);
+                        trackMap!.set(id, { prevFrames: frames, prevRawSec: rawSec, governedSec: nextGovernedSec });
+                    } else {
+                        const frameDelta = frames - prev.prevFrames;
+                        const rawDelta = rawSec - prev.prevRawSec;
+                        const allowedDelta = Math.min(rawDelta, frameDelta * MAX_DECODE_SEC_PER_FRAME);
+                        nextGovernedSec = prev.governedSec + allowedDelta;
+                        prev.prevFrames = frames;
+                        prev.prevRawSec = rawSec;
+                        prev.governedSec = nextGovernedSec;
+                    }
+
+                    if (nextGovernedSec !== rawSec) {
+                        stat = Object.assign({}, stat, { totalDecodeTime: nextGovernedSec });
+                        modified = true;
+                    }
+                }
+                entries.set(id, stat);
+            });
+
+            return modified ? (entries as unknown as RTCStatsReport) : rawReport;
+        };
+
+        const patchGetStatsOnProto = (proto: any) => {
+            if (!proto || typeof proto.getStats !== 'function' || proto.__pxeNativeGetStats) {
+                return;
+            }
+            const origGetStats = proto.getStats;
+            proto.__pxeNativeGetStats = origGetStats;
+            proto.getStats = function(...args: any[]) {
+                const res = origGetStats.apply(this, args);
+                if (args.length === 0 && res && typeof res.then === 'function') {
+                    return res.then((report: RTCStatsReport) => governStatsReport(this, report));
+                }
+                return res;
+            };
+        };
+
+        patchGetStatsOnProto(OrgRTCPeerConnection?.prototype);
+        patchGetStatsOnProto(window.RTCRtpReceiver?.prototype);
+    }
+
+    // Suppress virtual Touch Adaptation Kit (TAK) controller & negotiations on play.xbox.com (Desktop-only build)
+    // and handle 1440p (2K Experimental) DataChannel negotiation when selected.
+    if (window.RTCDataChannel?.prototype) {
+        const dcProto = window.RTCDataChannel.prototype as any;
+        if (typeof dcProto.send === 'function' && !dcProto.__pxeNativeSend) {
+            const origSend = dcProto.send;
+            dcProto.__pxeNativeSend = origSend;
+            const isQhdTarget = getGlobalPref(GlobalPref.STREAM_RESOLUTION) === StreamResolution.DIM_1440P;
+            const negotiatedControlChannels = new WeakSet<RTCDataChannel>();
+            let activeControlChannel: RTCDataChannel | null = null;
+            let pendingQhdAlias = false;
+
+            dcProto.send = function(this: RTCDataChannel, payload: any) {
+                if (this?.label === 'control') {
+                    activeControlChannel = this;
+                }
+
+                if (typeof payload === 'string') {
+                    try {
+                        // Force touchcontrols enabled: false so play.xbox.com never spawns the virtual touch controller on tablets
+                        if (this?.label === 'message' && payload.includes('/streaming/touchcontrols/')) {
+                            const parsed = JSON.parse(payload);
+                            if (typeof parsed?.target === 'string' && parsed.target.startsWith('/streaming/touchcontrols/') && typeof parsed.content === 'string') {
+                                const contentObj = JSON.parse(parsed.content);
+                                if ('enabled' in contentObj) {
+                                    contentObj.enabled = false;
+                                }
+                                if ('maxTouchPoints' in contentObj) {
+                                    contentObj.maxTouchPoints = 0;
+                                }
+                                parsed.content = JSON.stringify(contentObj);
+                                payload = JSON.stringify(parsed);
+                            }
+                        } else if (isQhdTarget && this?.label === 'message' && payload.includes('/streaming/characteristics/dimensionschanged')) {
+                            const parsed = JSON.parse(payload);
+                            if (parsed?.target === '/streaming/characteristics/dimensionschanged' && typeof parsed.content === 'string') {
+                                const contentObj = Object.assign({}, JSON.parse(parsed.content), {
+                                    preferredWidth: 2560,
+                                    preferredHeight: 1440,
+                                    safeAreaLeft: 0,
+                                    safeAreaTop: 0,
+                                    safeAreaRight: 2560,
+                                    safeAreaBottom: 1440,
+                                    supportsCustomResolution: true,
+                                });
+                                parsed.content = JSON.stringify(contentObj);
+                                payload = JSON.stringify(parsed);
+                                pendingQhdAlias = true;
+                            }
+                        } else if (isQhdTarget && this?.label === 'control' && payload.includes('userRequestedResolutionUpdate')) {
+                            const parsed = JSON.parse(payload);
+                            if (parsed?.message === 'userRequestedResolutionUpdate') {
+                                parsed.resolutionAlias = '1440';
+                                payload = JSON.stringify(parsed);
+                                negotiatedControlChannels.add(this);
+                                pendingQhdAlias = false;
+                            }
+                        }
+                    } catch (e) {}
+                }
+
+                const result = origSend.call(this, payload);
+
+                if (
+                    isQhdTarget &&
+                    pendingQhdAlias &&
+                    activeControlChannel &&
+                    activeControlChannel.readyState === 'open' &&
+                    !negotiatedControlChannels.has(activeControlChannel)
+                ) {
+                    pendingQhdAlias = false;
+                    negotiatedControlChannels.add(activeControlChannel);
+                    try {
+                        origSend.call(activeControlChannel, JSON.stringify({
+                            message: 'userRequestedResolutionUpdate',
+                            resolutionAlias: '1440',
+                        }));
+                    } catch (e) {}
+                }
+
+                return result;
+            };
+        }
     }
 }
 

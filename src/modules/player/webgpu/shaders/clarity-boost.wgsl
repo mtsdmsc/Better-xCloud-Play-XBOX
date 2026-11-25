@@ -48,18 +48,28 @@ fn clarityBoost(coord: vec2<f32>, texSize: vec2<f32>, e: vec3<f32>) -> vec3<f32>
     let h = textureSampleBaseClampToEdge(ourTexture, ourSampler, coord + texelSize * vec2( 0.0, -1.0)).rgb;
     let i = textureSampleBaseClampToEdge(ourTexture, ourSampler, coord + texelSize * vec2( 1.0, -1.0)).rgb;
 
+    // Edge-preserving compression debanding on flat gradients before sharpening
+    let crossMin = min(min(min(d, e), min(f, b)), h);
+    let crossMax = max(max(max(d, e), max(f, b)), h);
+    let boxMin = min(crossMin, min(min(a, c), min(g, i)));
+    let boxMax = max(crossMax, max(max(a, c), max(g, i)));
+    let localLumaSpan = dot(boxMax - boxMin, LUMINOSITY_FACTOR);
+    let flatWeight = 1.0 - smoothstep(0.006, 0.042, localLumaSpan);
+    let neighborhoodMean = ((b + d + f + h) * 2.0 + (a + c + g + i)) / 12.0;
+    let cleanedCenter = mix(e, neighborhoodMean, flatWeight * 0.5);
+
     // Unsharp Masking (USM)
     if ourParams.filterId == FILTER_UNSHARP_MASKING {
-        let gaussianBlur = (a + c + g + i) * 1.0 + (b + d + f + h) * 2.0 + e * 4.0;
+        let gaussianBlur = (a + c + g + i) * 1.0 + (b + d + f + h) * 2.0 + cleanedCenter * 4.0;
         let blurred = gaussianBlur / 16.0;
-        return e + (e - blurred) * (ourParams.sharpness / 3.0);
+        return cleanedCenter + (cleanedCenter - blurred) * (ourParams.sharpness / 3.0);
     }
 
     // Contrast Adaptive Sharpening (CAS)
-    let minRgb = min(min(min(d, e), min(f, b)), h) + min(min(a, c), min(g, i));
-    let maxRgb = max(max(max(d, e), max(f, b)), h) + max(max(a, c), max(g, i));
+    let minRgb = crossMin + min(min(a, c), min(g, i));
+    let maxRgb = crossMax + max(max(a, c), max(g, i));
 
-    let reciprocalMaxRgb = 1.0 / maxRgb;
+    let reciprocalMaxRgb = 1.0 / max(maxRgb, vec3(0.0001));
     var amplifyRgb = clamp(min(minRgb, 2.0 - maxRgb) * reciprocalMaxRgb, vec3(0.0), vec3(1.0));
     amplifyRgb = 1.0 / sqrt(amplifyRgb);
 
@@ -67,9 +77,9 @@ fn clarityBoost(coord: vec2<f32>, texSize: vec2<f32>, e: vec3<f32>) -> vec3<f32>
     let reciprocalWeightRgb = 1.0 / (4.0 * weightRgb + 1.0);
 
     let window = b + d + f + h;
-    let outColor = clamp((window * weightRgb + e) * reciprocalWeightRgb, vec3(0.0), vec3(1.0));
+    let outColor = clamp((window * weightRgb + cleanedCenter) * reciprocalWeightRgb, vec3(0.0), vec3(1.0));
 
-    return mix(e, outColor, ourParams.sharpness / 2.0);
+    return mix(cleanedCenter, outColor, ourParams.sharpness / 2.0);
 }
 
 

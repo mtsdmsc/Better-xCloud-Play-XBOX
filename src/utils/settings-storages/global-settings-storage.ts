@@ -145,6 +145,7 @@ export class GlobalSettingsStorage extends BaseSettingsStorage<GlobalPref> {
                 [StreamResolution.DIM_720P]: '720p',
                 [StreamResolution.DIM_1080P]: '1080p',
                 [StreamResolution.DIM_1080P_HQ]: '1080p (HQ)',
+                [StreamResolution.DIM_1440P]: `1440p (2K ${t('experimental')})`,
             },
             suggest: {
                 lowest: StreamResolution.DIM_720P,
@@ -235,7 +236,7 @@ export class GlobalSettingsStorage extends BaseSettingsStorage<GlobalPref> {
         [GlobalPref.TOUCH_CONTROLLER_MODE]: {
             requiredVariants: 'full',
             label: t('availability'),
-            default: TouchControllerMode.ALL,
+            default: TouchControllerMode.OFF,
             options: {
                 [TouchControllerMode.DEFAULT]: t('default'),
                 [TouchControllerMode.OFF]: t('off'),
@@ -243,7 +244,7 @@ export class GlobalSettingsStorage extends BaseSettingsStorage<GlobalPref> {
             },
 
             unsupported: !STATES.userAgent.capabilities.touch,
-            unsupportedValue: TouchControllerMode.DEFAULT,
+            unsupportedValue: TouchControllerMode.OFF,
         },
         [GlobalPref.TOUCH_CONTROLLER_AUTO_OFF]: {
             requiredVariants: 'full',

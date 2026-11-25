@@ -121,6 +121,10 @@ export function addCss() {
         }
     }
 
+    // Desktop-only build: hide virtual touch controller overlay (#BabylonCanvasContainer-main / #babylon-canvas)
+    // so tablets in Edge PC mode never show the virtual on-screen gamepad before a physical controller connects.
+    selectorToHide.push('#BabylonCanvasContainer-main', '#babylon-canvas', '[data-testid="tak-container"]');
+
     if (selectorToHide.length > 0) {
         css += selectorToHide.join(',') + '{ display: none !important; }';
     }

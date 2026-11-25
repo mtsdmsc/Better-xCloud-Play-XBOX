@@ -26,6 +26,11 @@ uniform float saturation;
 
 out vec4 fragColor;
 
+// Sub-bit spatial dithering to break up 8-bit H.264 color banding in dark gradients
+float pxeGradientDither(vec2 pixelPos) {
+    return fract(52.9829189 * fract(dot(pixelPos, vec2(0.06711056, 0.00583715)))) - 0.5;
+}
+
 vec3 clarityBoost(sampler2D tex, vec2 coord, vec3 e) {
     // Load a collection of samples in a 3x3 neighborhood, where e is the current pixel.
     // a b c
@@ -46,6 +51,27 @@ vec3 clarityBoost(sampler2D tex, vec2 coord, vec3 e) {
         c = texture(tex, coord + texelSize * vec2(1, 1)).rgb;
         g = texture(tex, coord + texelSize * vec2(-1, -1)).rgb;
         i = texture(tex, coord + texelSize * vec2(1, -1)).rgb;
+    }
+
+    // In Quality Mode, apply edge-preserving compression deblocking & debanding on flat gradients
+    // before sharpening so H.264 macroblock steps and dark-scene color bands are smoothed out.
+    if (qualityMode) {
+        vec3 crossMin = min(min(min(d, e), min(f, b)), h);
+        vec3 crossMax = max(max(max(d, e), max(f, b)), h);
+        vec3 diagMin = min(min(a, c), min(g, i));
+        vec3 diagMax = max(max(a, c), max(g, i));
+        vec3 boxMin = min(crossMin, diagMin);
+        vec3 boxMax = max(crossMax, diagMax);
+
+        float localLumaSpan = dot(boxMax - boxMin, LUMA709);
+        // Smooth only shallow quantization steps (< 4.2% luma contrast), preserving real texture edges
+        float flatWeight = 1.0 - smoothstep(0.006, 0.042, localLumaSpan);
+        if (flatWeight > 0.0) {
+            vec3 neighborhoodMean = ((b + d + f + h) * 2.0 + (a + c + g + i)) / 12.0;
+            e = mix(e, neighborhoodMean, flatWeight * 0.55);
+            e += pxeGradientDither(gl_FragCoord.xy) * (0.6 / 255.0) * flatWeight;
+            e = clamp(e, 0.0, 1.0);
+        }
     }
 
     // USM

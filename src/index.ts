@@ -527,9 +527,8 @@ function main() {
         }
         disablePwa();
 
-        if (getGlobalPref(GlobalPref.TOUCH_CONTROLLER_MODE) === TouchControllerMode.ALL) {
-            TouchController.setup();
-        }
+        // Desktop-only build: virtual touch controller is disabled (even on touch-screen tablets/laptops)
+        TouchController.disable();
 
         // Start PointerProviderServer
         if (AppInterface && (getGlobalPref(GlobalPref.MKB_ENABLED) || getGlobalPref(GlobalPref.NATIVE_MKB_MODE) === NativeMkbMode.ON)) {

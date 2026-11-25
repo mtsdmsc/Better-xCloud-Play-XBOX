@@ -36,6 +36,7 @@ export const enum StreamResolution {
     DIM_720P = '720p',
     DIM_1080P = '1080p',
     DIM_1080P_HQ = '1080p-hq',
+    DIM_1440P = '1440p',
     AUTO = 'auto',
 }
 

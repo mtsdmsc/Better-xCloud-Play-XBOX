@@ -353,6 +353,7 @@ export function generateMsDeviceInfo(osName: OsName) {
 export function getOsNameFromResolution(resolution: StreamResolution): OsName {
     let osName: OsName;
     switch (resolution) {
+        case StreamResolution.DIM_1440P:
         case StreamResolution.DIM_1080P_HQ:
             osName = 'tizen';
             break;
